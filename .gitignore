@@ -1,0 +1,57 @@
+# Build directories
+build/
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+
+# IDE files
+.vscode/settings.json
+.vscode/launch.json
+.vscode/c_cpp_properties.json
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Output files
+*.mp4
+*.mov
+*.webm
+*.avi
+*.mkv
+*.ppm
+*.jpg
+*.png
+!media/samples/*.mp4
+!media/samples/*.mov
+!media/samples/*.webm
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+
+# FFmpeg logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Test outputs
+output_*
+test_*
+realtime_*
+filtered_*
+processed_*

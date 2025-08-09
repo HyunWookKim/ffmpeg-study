@@ -1,0 +1,154 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "dependsOn": "configure",
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "configure",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-B",
+                "${workspaceFolder}/build",
+                "-S",
+                "${workspaceFolder}"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "rm",
+            "args": [
+                "-rf",
+                "${workspaceFolder}/build"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "run-ffmpeg-info",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/ffmpeg-info",
+            "args": ["${workspaceFolder}/media/samples/h264_sample.mp4"],
+            "group": "test",
+            "dependsOn": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "new"
+            }
+        },
+        {
+            "label": "test-hardware-decoder",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/hardware-decoder",
+            "args": ["${workspaceFolder}/media/samples/hevc_sample.mp4"],
+            "group": "test",
+            "dependsOn": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "new"
+            }
+        },
+        {
+            "label": "test-video-filter",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/video-filter",
+            "args": [
+                "${workspaceFolder}/media/samples/h264_sample.mp4",
+                "${workspaceFolder}/test_output.mp4",
+                "blur"
+            ],
+            "group": "test",
+            "dependsOn": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "new"
+            }
+        },
+        {
+            "label": "test-realtime-processor",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/realtime-processor",
+            "args": [
+                "file",
+                "${workspaceFolder}/media/samples/h264_sample.mp4", 
+                "${workspaceFolder}/realtime_test.mp4",
+                "edge"
+            ],
+            "group": "test",
+            "dependsOn": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "new"
+            }
+        },
+        {
+            "label": "show-rtmp-usage",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/rtmp-streamer",
+            "args": ["test-server"],
+            "group": "test",
+            "dependsOn": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "new"
+            }
+        },
+        {
+            "label": "test-video-player",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/video-player",
+            "args": ["${workspaceFolder}/media/samples/h264_sample.mp4"],
+            "group": "test",
+            "dependsOn": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "new"
+            }
+        }
+    ]
+}
