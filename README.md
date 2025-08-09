@@ -16,10 +16,19 @@ M1 Mac에서 FFmpeg와 VideoToolbox 하드웨어 가속을 활용한 고급 비�
 
 ### 🎬 고급 예제
 - **비디오 플레이어**: 실시간 하드웨어 가속 재생
-- **GUI 비디오 플레이어**: SDL2 기반 윈도우 플레이어
+- **GUI 비디오 플레이어**: SDL2 기반 윈도우 플레이어 (루프 재생, 속도 조절)
+- **하드웨어 가속 벤치마크**: 루프 재생 및 성능 측정
 - **실시간 스트리밍**: RTMP 프로토콜 지원
 - **비디오 필터**: 실시간 영상 효과 처리
 - **멀티스레드 처리**: 저지연 비디오 파이프라인
+
+### 🎮 GUI 플레이어 기능
+- **하드웨어 가속**: VideoToolbox 기반 H.264/HEVC 디코딩
+- **SDL2 렌더링**: 고성능 YUV 텍스처 렌더링
+- **멀티스레딩**: 디코더/렌더러 분리로 끊김 없는 재생
+- **키보드 조작**: 재생/일시정지, 속도 조절 (0.25x~4x)
+- **자동 루프**: EOF에서 자동 seek 및 디코더 플러시
+- **성능 모니터링**: 실시간 프레임 카운터 및 상태 표시
 
 ### 🔧 개발 환경
 - **VS Code 통합**: IntelliSense, 디버깅, 빌드 작업
@@ -99,13 +108,23 @@ make -j4
 
 ### 1. 하드웨어 가속 디코딩
 ```bash
+# 단일 재생
 ./build/hardware-decoder media/samples/hevc_sample.mp4
+
+# 루프 재생 (10초간 성능 측정)
+./build/hardware-decoder media/samples/h264_sample.mp4 loop
 ```
 ```
 🍎 M1 Mac Hardware Accelerated Video Decoder
 ✅ VideoToolbox hardware acceleration initialized!
 🚀 Found hevc decoder with VideoToolbox support
-Average decoding speed: 330+ FPS
+🔄 Loop 1: 파일 끝 도달, 처음부터 다시 재생 (총 59 프레임 처리)
+📊 Frame 100 | HW: 100 | SW: 0 | 평균 FPS: 420.5
+🔄 HW→SW 전송 성공: nv12 (640x480)
+
+=== 최종 벤치마크 결과 ===
+평균 디코딩 속도: 425.20 FPS
+하드웨어 가속 비율: 100.0%
 ```
 
 ### 2. 실시간 비디오 플레이어
@@ -119,14 +138,20 @@ Hardware acceleration: YES (VideoToolbox)
 🎬 Frame 30 | Time: 1.20s | 🖥️ HW | Queue: 2
 ```
 
-### 3. GUI 비디오 플레이어
+### 3. GUI 비디오 플레이어 ⭐ 신규!
 ```bash
 ./build/gui-video-player media/samples/h264_sample.mp4
 ```
-- 실제 윈도우에서 비디오 재생
-- SDL2 기반 GUI 인터페이스
-- 키보드 제어: SPACE(일시정지), ↑↓(속도조절), ESC(종료)
-- VideoToolbox 하드웨어 가속 지원
+**주요 기능:**
+- 🖥️ **하드웨어 가속**: VideoToolbox 기반 H.264/HEVC 디코딩
+- 🎬 **SDL2 GUI**: 윈도우 기반 실시간 재생
+- 🔄 **자동 루프**: EOF에서 자동 seek 및 재시작  
+- ⚡ **키보드 제어**: 
+  - `SPACE`: 재생/일시정지
+  - `↑/↓`: 속도 조절 (0.25x~4x)
+  - `ESC/Q`: 종료
+- 🧵 **멀티스레딩**: 디코더/렌더러 분리
+- 📊 **실시간 모니터링**: 프레임 카운터, 속도 표시
 
 ### 4. 비디오 필터 처리
 ```bash

@@ -53,6 +53,11 @@ private:
     
     std::thread decoder_thread;
     std::thread render_thread;
+    
+    // SwsContext 추적용 변수들
+    enum AVPixelFormat last_src_format = AV_PIX_FMT_NONE;
+    int last_src_width = 0;
+    int last_src_height = 0;
 
 public:
     GUIVideoPlayer() = default;
@@ -155,7 +160,7 @@ public:
         
         texture = SDL_CreateTexture(
             renderer,
-            SDL_PIXELFORMAT_YV12,
+            SDL_PIXELFORMAT_IYUV,  // YUV420P 포맷
             SDL_TEXTUREACCESS_STREAMING,
             video_width, video_height
         );
@@ -165,12 +170,9 @@ public:
             return false;
         }
         
-        // SwsContext 생성 (하드웨어 프레임 → YUV420P 변환용)
-        sws_ctx = sws_getContext(
-            video_width, video_height, AV_PIX_FMT_YUV420P,
-            video_width, video_height, AV_PIX_FMT_YUV420P,
-            SWS_BILINEAR, nullptr, nullptr, nullptr
-        );
+        // SwsContext 생성 (다양한 픽셀 포맷 → YUV420P 변환용)
+        // 하드웨어 프레임도 고려하여 동적으로 생성할 예정
+        sws_ctx = nullptr;
         
         std::cout << "🎬 GUI 비디오 플레이어 초기화 완료!" << std::endl;
         std::cout << "📹 " << video_width << "x" << video_height 
@@ -235,13 +237,53 @@ private:
         AVPacket* packet = av_packet_alloc();
         AVFrame* frame = av_frame_alloc();
         AVFrame* sw_frame = av_frame_alloc();
+        AVFrame* yuv_frame = av_frame_alloc();
+        
+        // YUV420P 프레임 버퍼 할당
+        yuv_frame->format = AV_PIX_FMT_YUV420P;
+        yuv_frame->width = video_width;
+        yuv_frame->height = video_height;
+        av_frame_get_buffer(yuv_frame, 0);
         
         auto start_time = std::chrono::steady_clock::now();
+        int frame_count = 0;
         
-        while (!should_quit && av_read_frame(format_ctx, packet) >= 0) {
+        std::cout << "🔍 디코더 워커 시작" << std::endl;
+        
+        while (!should_quit) {
+            int ret = av_read_frame(format_ctx, packet);
+            
+            // 파일 끝에 도달하면 처음부터 다시 재생 (루프)
+            if (ret < 0) {
+                if (ret == AVERROR_EOF) {
+                    std::cout << "🔄 파일 끝 도달, 처음부터 다시 재생 (프레임: " << frame_count << ")" << std::endl;
+                    
+                    // avcodec_flush_buffers로 디코더 상태 초기화
+                    avcodec_flush_buffers(video_codec_ctx);
+                    
+                    // 파일 시작으로 seek
+                    if (avformat_seek_file(format_ctx, video_stream_index, 0, 0, 0, AVSEEK_FLAG_FRAME) < 0) {
+                        std::cerr << "❌ Seek 실패" << std::endl;
+                        // 그래도 계속 시도
+                    }
+                    
+                    current_frame = 0;
+                    frame_count = 0;
+                    
+                    // 잠시 대기 후 다시 시도
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    continue;
+                } else {
+                    std::cerr << "❌ 프레임 읽기 오류: " << av_err2str(ret) << std::endl;
+                    break;
+                }
+            }
+            
             if (packet->stream_index == video_stream_index) {
                 if (avcodec_send_packet(video_codec_ctx, packet) == 0) {
                     while (avcodec_receive_frame(video_codec_ctx, frame) == 0) {
+                        frame_count++;
+                        
                         // 큐가 가득 찬 경우 대기
                         std::unique_lock<std::mutex> lock(queue_mutex);
                         queue_condition.wait(lock, [this] { 
@@ -251,21 +293,67 @@ private:
                         if (should_quit) break;
                         
                         AVFrame* display_frame = av_frame_alloc();
+                        AVFrame* source_frame = frame;
                         
                         // 하드웨어 프레임인 경우 소프트웨어로 전송
                         if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
                             if (av_hwframe_transfer_data(sw_frame, frame, 0) == 0) {
                                 av_frame_copy_props(sw_frame, frame);
-                                av_frame_ref(display_frame, sw_frame);
+                                source_frame = sw_frame;
+                                std::cout << "🖥️ " << std::flush;  // 하드웨어 디코딩 표시
                             } else {
-                                av_frame_ref(display_frame, frame);
+                                std::cout << "💻 " << std::flush;  // 소프트웨어 fallback
                             }
                         } else {
-                            av_frame_ref(display_frame, frame);
+                            std::cout << "💻 " << std::flush;  // 소프트웨어 디코딩
+                        }
+                        
+                        // YUV420P로 변환이 필요한 경우
+                        if (source_frame->format != AV_PIX_FMT_YUV420P) {
+                            // SwsContext 동적 생성/재사용
+                            AVPixelFormat src_format = (AVPixelFormat)source_frame->format;
+                            if (!sws_ctx || 
+                                last_src_format != src_format ||
+                                last_src_width != source_frame->width ||
+                                last_src_height != source_frame->height) {
+                                
+                                if (sws_ctx) {
+                                    sws_freeContext(sws_ctx);
+                                }
+                                
+                                sws_ctx = sws_getContext(
+                                    source_frame->width, source_frame->height, src_format,
+                                    video_width, video_height, AV_PIX_FMT_YUV420P,
+                                    SWS_BILINEAR, nullptr, nullptr, nullptr
+                                );
+                                
+                                if (!sws_ctx) {
+                                    std::cerr << "❌ SwsContext 생성 실패" << std::endl;
+                                    av_frame_free(&display_frame);
+                                    continue;
+                                }
+                                
+                                // 추적 변수 업데이트
+                                last_src_format = src_format;
+                                last_src_width = source_frame->width;
+                                last_src_height = source_frame->height;
+                            }
+                            
+                            // 픽셀 포맷 변환
+                            sws_scale(sws_ctx,
+                                     source_frame->data, source_frame->linesize, 0, source_frame->height,
+                                     yuv_frame->data, yuv_frame->linesize);
+                                     
+                            av_frame_ref(display_frame, yuv_frame);
+                        } else {
+                            // 이미 YUV420P인 경우 직접 사용
+                            av_frame_ref(display_frame, source_frame);
                         }
                         
                         frame_queue.push(display_frame);
                         current_frame++;
+                        queue_condition.notify_all(); // 렌더러가 기다리고 있을 수 있음
+                        lock.unlock();
                         
                         av_frame_unref(frame);
                         av_frame_unref(sw_frame);
@@ -280,78 +368,130 @@ private:
             }
         }
         
+        std::cout << "\n🔍 디코더 워커 종료 (총 " << frame_count << " 프레임 처리)" << std::endl;
+        
         av_frame_free(&frame);
         av_frame_free(&sw_frame);
+        av_frame_free(&yuv_frame);
         av_packet_free(&packet);
     }
     
     void renderWorker() {
         const auto frame_duration = std::chrono::duration<double>(1.0 / frame_rate);
         auto last_frame_time = std::chrono::steady_clock::now();
+        int rendered_frames = 0;
+        
+        std::cout << "🎬 렌더링 워커 시작 - 프레임 간격: " 
+                  << frame_duration.count() * 1000 << "ms" << std::endl;
         
         while (!should_quit) {
             std::unique_lock<std::mutex> lock(queue_mutex);
             
+            // 프레임이 없으면 더 오래 기다림 (디코더가 EOF에서 루프할 시간을 줌)
             if (frame_queue.empty()) {
-                queue_condition.wait_for(lock, std::chrono::milliseconds(10));
-                continue;
+                // 100ms까지 기다림 - 디코더가 루프 후 프레임을 채울 시간
+                if (queue_condition.wait_for(lock, std::chrono::milliseconds(100)) == std::cv_status::timeout) {
+                    // 타임아웃이어도 계속 진행 (디코더가 루프 중일 수 있음)
+                    lock.unlock();
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                    continue;
+                }
+                // 프레임이 없으면 다시 체크
+                if (frame_queue.empty()) {
+                    lock.unlock();
+                    continue;
+                }
             }
             
             AVFrame* frame = frame_queue.front();
             frame_queue.pop();
+            queue_condition.notify_all(); // 디코더가 기다리고 있을 수 있음
             lock.unlock();
             
-            // 프레임 타이밍 조절
+            // 프레임 타이밍 조절 - 재생 속도 적용
             auto current_time = std::chrono::steady_clock::now();
             auto adjusted_duration = std::chrono::duration<double>(frame_duration.count() / playback_speed.load());
             auto time_since_last = current_time - last_frame_time;
             
             if (time_since_last < adjusted_duration) {
-                std::this_thread::sleep_for(adjusted_duration - time_since_last);
+                auto sleep_time = adjusted_duration - time_since_last;
+                std::this_thread::sleep_for(sleep_time);
             }
             
             renderFrame(frame);
             av_frame_free(&frame);
+            rendered_frames++;
             
             last_frame_time = std::chrono::steady_clock::now();
             
             // 일시정지 처리
             while (paused && !should_quit) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                last_frame_time = std::chrono::steady_clock::now(); // 일시정지 후 타이밍 리셋
             }
         }
+        
+        std::cout << "🎬 렌더링 워커 종료 (총 " << rendered_frames << " 프레임 렌더링)" << std::endl;
     }
     
     void renderFrame(AVFrame* frame) {
-        if (!frame || frame->format != AV_PIX_FMT_YUV420P) {
+        if (!frame) {
+            std::cerr << "❌ NULL 프레임" << std::endl;
+            return;
+        }
+        
+        // YUV420P 포맷 확인
+        if (frame->format != AV_PIX_FMT_YUV420P) {
+            std::cerr << "❌ 예상치 못한 픽셀 포맷: " << frame->format << std::endl;
+            return;
+        }
+        
+        // 프레임 크기 확인
+        if (frame->width != video_width || frame->height != video_height) {
+            std::cerr << "❌ 프레임 크기 불일치: " << frame->width << "x" << frame->height 
+                      << " vs " << video_width << "x" << video_height << std::endl;
+            return;
+        }
+        
+        // YUV 데이터 유효성 확인
+        if (!frame->data[0] || !frame->data[1] || !frame->data[2]) {
+            std::cerr << "❌ 유효하지 않은 YUV 데이터" << std::endl;
             return;
         }
         
         // YUV 데이터를 SDL 텍스처에 업데이트
-        SDL_UpdateYUVTexture(
+        int result = SDL_UpdateYUVTexture(
             texture, nullptr,
             frame->data[0], frame->linesize[0],  // Y plane
             frame->data[1], frame->linesize[1],  // U plane  
             frame->data[2], frame->linesize[2]   // V plane
         );
         
+        if (result < 0) {
+            std::cerr << "❌ SDL 텍스처 업데이트 실패: " << SDL_GetError() << std::endl;
+            return;
+        }
+        
         // 렌더링
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
-        SDL_RenderCopy(renderer, texture, nullptr, nullptr);
         
-        // 재생 정보 오버레이 (간단한 텍스트는 생략하고 타이틀바에만 표시)
-        std::string title = "FFmpeg GUI Player - Frame: " + std::to_string(current_frame.load()) + 
-                           "/" + std::to_string(total_frames) + 
-                           (paused ? " [PAUSED]" : " [PLAYING]") +
-                           " Speed: " + std::to_string(playback_speed.load()) + "x";
-        SDL_SetWindowTitle(window, title.c_str());
+        // 텍스처 렌더링
+        result = SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+        if (result < 0) {
+            std::cerr << "❌ SDL 렌더링 실패: " << SDL_GetError() << std::endl;
+            return;
+        }
+        
+        // 재생 정보 오버레이는 타이틀바 업데이트 제거 (스레드 안전성 문제)
+        // 대신 이벤트 루프에서 주기적으로 업데이트
         
         SDL_RenderPresent(renderer);
     }
     
     void eventLoop() {
         SDL_Event event;
+        auto last_title_update = std::chrono::steady_clock::now();
         
         std::cout << "\n🎮 조작법:" << std::endl;
         std::cout << "  SPACE: 재생/일시정지" << std::endl;
@@ -376,6 +516,17 @@ private:
                         }
                         break;
                 }
+            }
+            
+            // 타이틀바 업데이트 (메인 스레드에서만)
+            auto current_time = std::chrono::steady_clock::now();
+            if (current_time - last_title_update > std::chrono::milliseconds(100)) {
+                std::string title = "FFmpeg GUI Player - Frame: " + std::to_string(current_frame.load()) + 
+                                   "/" + std::to_string(total_frames) + 
+                                   (paused ? " [PAUSED]" : " [PLAYING]") +
+                                   " Speed: " + std::to_string(playback_speed.load()) + "x";
+                SDL_SetWindowTitle(window, title.c_str());
+                last_title_update = current_time;
             }
             
             std::this_thread::sleep_for(std::chrono::milliseconds(16)); // ~60 FPS

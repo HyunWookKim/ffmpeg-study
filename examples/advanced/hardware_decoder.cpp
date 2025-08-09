@@ -1,5 +1,6 @@
 #include <iostream>
 #include <chrono>
+#include <iomanip>
 
 extern "C" {
 #include <libavformat/avformat.h>
@@ -141,26 +142,70 @@ public:
         return true;
     }
     
-    void benchmark_decoding() {
+    void benchmark_decoding(bool enable_loop = false) {
         AVPacket* packet = av_packet_alloc();
         AVFrame* frame = av_frame_alloc();
+        AVFrame* sw_frame = av_frame_alloc(); // 하드웨어 프레임 전송용
         
-        if (!packet || !frame) {
+        if (!packet || !frame || !sw_frame) {
             std::cerr << "Could not allocate packet or frame" << std::endl;
             return;
         }
         
         int frame_count = 0;
+        int hw_frame_count = 0;
+        int sw_frame_count = 0;
+        int loop_count = 0;
         auto start_time = std::chrono::high_resolution_clock::now();
+        auto frame_start_time = start_time;
         
         std::cout << "\n=== Hardware Accelerated Decoding Benchmark ===" << std::endl;
         std::cout << "Codec: " << codec_ctx->codec->name << std::endl;
         std::cout << "Hardware acceleration: " << (codec_ctx->hw_device_ctx ? "YES (VideoToolbox)" : "NO (Software)") << std::endl;
         std::cout << "Resolution: " << codec_ctx->width << "x" << codec_ctx->height << std::endl;
+        std::cout << "Loop mode: " << (enable_loop ? "ENABLED" : "DISABLED") << std::endl;
+        std::cout << "----------------------------------------" << std::endl;
         
-        while (av_read_frame(format_ctx, packet) >= 0) {
+        // 최대 실행 시간 (루프 모드에서 무한 실행 방지)
+        const auto max_duration = std::chrono::seconds(enable_loop ? 10 : 300);
+        
+        while (true) {
+            int ret = av_read_frame(format_ctx, packet);
+            
+            // 파일 끝 처리 (GUI에서 개선한 루프 로직 적용)
+            if (ret < 0) {
+                if (ret == AVERROR_EOF && enable_loop) {
+                    loop_count++;
+                    std::cout << "🔄 Loop " << loop_count << ": 파일 끝 도달, 처음부터 다시 재생 (총 " << frame_count << " 프레임 처리)" << std::endl;
+                    
+                    // 디코더 상태 초기화
+                    avcodec_flush_buffers(codec_ctx);
+                    
+                    // 파일 시작으로 seek
+                    if (avformat_seek_file(format_ctx, video_stream_index, 0, 0, 0, AVSEEK_FLAG_FRAME) < 0) {
+                        std::cerr << "❌ Seek 실패" << std::endl;
+                        break;
+                    }
+                    
+                    // 시간 제한 체크
+                    auto current_time = std::chrono::high_resolution_clock::now();
+                    if (current_time - start_time > max_duration) {
+                        std::cout << "⏰ 시간 제한 도달, 벤치마크 종료" << std::endl;
+                        break;
+                    }
+                    
+                    continue;
+                } else if (ret == AVERROR_EOF) {
+                    std::cout << "📁 파일 끝 도달" << std::endl;
+                    break;
+                } else {
+                    print_error("프레임 읽기 오류", ret);
+                    break;
+                }
+            }
+            
             if (packet->stream_index == video_stream_index) {
-                int ret = avcodec_send_packet(codec_ctx, packet);
+                ret = avcodec_send_packet(codec_ctx, packet);
                 if (ret < 0) {
                     print_error("Error sending packet to decoder", ret);
                     break;
@@ -177,20 +222,42 @@ public:
                     
                     frame_count++;
                     
+                    // 프레임별 성능 측정
+                    auto frame_end_time = std::chrono::high_resolution_clock::now();
+                    auto frame_duration = std::chrono::duration_cast<std::chrono::microseconds>(frame_end_time - frame_start_time);
+                    
                     // 하드웨어 프레임인지 확인
                     bool is_hw_frame = (frame->format == AV_PIX_FMT_VIDEOTOOLBOX);
                     
                     if (is_hw_frame) {
-                        if (frame_count % 30 == 0) {
-                            std::cout << "🖥️  Frame " << frame_count << " decoded using VideoToolbox hardware acceleration" << std::endl;
+                        hw_frame_count++;
+                        std::cout << "🖥️ " << std::flush;  // 하드웨어 디코딩 표시
+                        
+                        // 하드웨어 프레임을 소프트웨어 메모리로 전송 데모
+                        if (frame_count % 60 == 0) { // 60프레임마다 데모
+                            if (av_hwframe_transfer_data(sw_frame, frame, 0) == 0) {
+                                const char* sw_format_name = av_get_pix_fmt_name((AVPixelFormat)sw_frame->format);
+                                std::cout << "\n� HW→SW 전송 성공: " << sw_format_name 
+                                         << " (" << sw_frame->width << "x" << sw_frame->height << ")" << std::endl;
+                            }
                         }
                     } else {
-                        if (frame_count % 30 == 0) {
-                            std::cout << "💻 Frame " << frame_count << " decoded using software" << std::endl;
-                        }
+                        sw_frame_count++;
+                        std::cout << "💻 " << std::flush;  // 소프트웨어 디코딩 표시
+                    }
+                    
+                    // 상세한 프레임 정보 (100프레임마다)
+                    if (frame_count % 100 == 0) {
+                        double avg_fps = frame_count * 1000000.0 / std::chrono::duration_cast<std::chrono::microseconds>(frame_end_time - start_time).count();
+                        std::cout << "\n� Frame " << frame_count 
+                                 << " | HW: " << hw_frame_count 
+                                 << " | SW: " << sw_frame_count
+                                 << " | 평균 FPS: " << std::fixed << std::setprecision(1) << avg_fps << std::endl;
                     }
                     
                     av_frame_unref(frame);
+                    av_frame_unref(sw_frame);
+                    frame_start_time = frame_end_time;
                 }
             }
             av_packet_unref(packet);
@@ -200,16 +267,25 @@ public:
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
         
-        std::cout << "\n=== Benchmark Results ===" << std::endl;
-        std::cout << "Total frames decoded: " << frame_count << std::endl;
-        std::cout << "Time taken: " << duration.count() << " ms" << std::endl;
+        std::cout << "\n\n=== 최종 벤치마크 결과 ===" << std::endl;
+        std::cout << "총 처리 프레임: " << frame_count << std::endl;
+        std::cout << "하드웨어 디코딩: " << hw_frame_count << " 프레임" << std::endl;
+        std::cout << "소프트웨어 디코딩: " << sw_frame_count << " 프레임" << std::endl;
+        if (enable_loop) {
+            std::cout << "완료된 루프: " << loop_count << " 회" << std::endl;
+        }
+        std::cout << "소요 시간: " << duration.count() << " ms" << std::endl;
         if (frame_count > 0 && duration.count() > 0) {
             double fps = (frame_count * 1000.0) / duration.count();
-            std::cout << "Average decoding speed: " << fps << " FPS" << std::endl;
+            double hw_percentage = (double)hw_frame_count / frame_count * 100.0;
+            std::cout << "평균 디코딩 속도: " << std::fixed << std::setprecision(2) << fps << " FPS" << std::endl;
+            std::cout << "하드웨어 가속 비율: " << std::fixed << std::setprecision(1) << hw_percentage << "%" << std::endl;
         }
+        std::cout << "=========================================" << std::endl;
         
         av_packet_free(&packet);
         av_frame_free(&frame);
+        av_frame_free(&sw_frame);
     }
     
 private:
@@ -233,20 +309,32 @@ private:
 };
 
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        std::cerr << "Usage: " << argv[0] << " <input_file>" << std::endl;
-        std::cerr << "Example: " << argv[0] << " media/samples/hevc_sample.mp4" << std::endl;
+    if (argc < 2 || argc > 3) {
+        std::cout << "🍎 M1 Mac Hardware Accelerated Video Decoder" << std::endl;
+        std::cout << "============================================" << std::endl;
+        std::cout << "사용법: " << argv[0] << " <input_file> [loop]" << std::endl;
+        std::cout << "\n예제:" << std::endl;
+        std::cout << "  " << argv[0] << " media/samples/hevc_sample.mp4        # 단일 재생" << std::endl;
+        std::cout << "  " << argv[0] << " media/samples/h264_sample.mp4 loop   # 루프 재생 (10초)" << std::endl;
+        std::cout << "\n지원 코덱:" << std::endl;
+        std::cout << "  🖥️  H.264, HEVC (VideoToolbox 하드웨어 가속)" << std::endl;
+        std::cout << "  💻 기타 모든 코덱 (소프트웨어 디코딩)" << std::endl;
         return 1;
     }
     
+    bool enable_loop = (argc == 3 && std::string(argv[2]) == "loop");
+    
     std::cout << "🍎 M1 Mac Hardware Accelerated Video Decoder" << std::endl;
     std::cout << "============================================" << std::endl;
+    std::cout << "파일: " << argv[1] << std::endl;
+    std::cout << "모드: " << (enable_loop ? "루프 재생 (10초)" : "단일 재생") << std::endl;
+    std::cout << "----------------------------------------" << std::endl;
     
     HardwareAcceleratedDecoder decoder;
     
     // Initialize hardware acceleration
     if (!decoder.initialize_hardware_acceleration()) {
-        std::cerr << "Failed to initialize hardware acceleration, continuing with software decoding..." << std::endl;
+        std::cerr << "⚠️  하드웨어 가속 초기화 실패, 소프트웨어 디코딩으로 계속..." << std::endl;
     }
     
     // Open file and decode
@@ -254,7 +342,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    decoder.benchmark_decoding();
+    decoder.benchmark_decoding(enable_loop);
     
     return 0;
 }

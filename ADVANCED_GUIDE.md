@@ -79,21 +79,40 @@ Duration: 2.00 seconds
 
 ### 1. M1 Mac 하드웨어 가속 디코딩
 ```bash
+# 단일 재생 모드
 ./build/hardware-decoder media/samples/hevc_sample.mp4
+
+# 루프 재생 모드 (10초간 성능 측정) ⭐ 신규!
+./build/hardware-decoder media/samples/h264_sample.mp4 loop
 ```
 **기능:**
 - VideoToolbox를 활용한 H.264/HEVC 하드웨어 가속
-- 소프트웨어 vs 하드웨어 디코딩 성능 벤치마크
+- 소프트웨어 vs 하드웨어 디코딩 성능 벤치마크  
+- 루프 재생으로 지속적인 성능 측정
 - M1 프로세서 최적화
+- 하드웨어 → 소프트웨어 프레임 전송 데모
 
 **출력 예시:**
 ```
 🍎 M1 Mac Hardware Accelerated Video Decoder
+파일: media/samples/h264_sample.mp4
+모드: 루프 재생 (10초)
 ✅ VideoToolbox hardware acceleration initialized successfully!
 🚀 Found h264 decoder with VideoToolbox support
 ✅ Hardware acceleration confirmed and active
-Average decoding speed: 300+ FPS with VideoToolbox
-🖥️  Frame 30 decoded using VideoToolbox hardware acceleration
+
+🖥️ 🖥️ 🖥️ 🖥️ 🖥️ 🖥️ ...
+🔄 Loop 1: 파일 끝 도달, 처음부터 다시 재생 (총 59 프레임 처리)
+🔄 HW→SW 전송 성공: nv12 (640x480)
+📊 Frame 100 | HW: 100 | SW: 0 | 평균 FPS: 420.5
+
+=== 최종 벤치마크 결과 ===
+총 처리 프레임: 2,500
+하드웨어 디코딩: 2,500 프레임
+소프트웨어 디코딩: 0 프레임
+완료된 루프: 42 회
+평균 디코딩 속도: 425.20 FPS
+하드웨어 가속 비율: 100.0%
 ```
 
 ### 2. 비디오 필터 처리
@@ -188,7 +207,7 @@ Hardware acceleration: YES (VideoToolbox)
 📺 [████████████████████░░░░░░░░░░░░░░░░░░░░] 50.8% (1s/2s)
 ```
 
-### 7. GUI 비디오 플레이어 (`gui-video-player`)
+### 7. GUI 비디오 플레이어 ⭐ 신규!
 
 **기능**: SDL2 기반의 실제 윈도우가 있는 비디오 플레이어
 
@@ -199,6 +218,59 @@ Hardware acceleration: YES (VideoToolbox)
 # HEVC 파일 재생
 ./build/gui-video-player media/samples/hevc_sample.mp4
 ```
+
+**주요 특징:**
+- 🖥️ **VideoToolbox 하드웨어 가속**: M1 Mac 전용 미디어 엔진 활용
+- 🎬 **SDL2 GUI 렌더링**: 고성능 YUV420P 텍스처 기반 렌더링
+- 🧵 **멀티스레드 아키텍처**: 디코더/렌더러 분리로 끊김 없는 재생
+- 🔄 **자동 루프 재생**: EOF 감지 시 자동 seek 및 디코더 플러시
+- ⚡ **동적 픽셀 포맷 변환**: SwsContext를 이용한 실시간 포맷 변환
+- 📊 **실시간 모니터링**: 프레임 카운터, 재생 속도, 하드웨어 가속 상태
+
+**키보드 제어:**
+- `SPACE`: 재생/일시정지 토글
+- `↑/↓`: 재생 속도 조절 (0.25x ~ 4.0x)
+- `ESC` 또는 `Q`: 플레이어 종료
+- 윈도우 닫기: 마우스로 윈도우 닫기
+
+**아키텍처:**
+```
+[디코더 스레드]           [렌더링 스레드]           [메인 스레드]
+     ↓                        ↓                       ↓
+[av_read_frame]    →    [프레임 큐]    →         [SDL 이벤트 루프]
+[하드웨어 디코딩]       [YUV 텍스처 업데이트]      [키보드 입력 처리]
+[픽셀 포맷 변환]        [프레임 타이밍 제어]       [윈도우 타이틀 업데이트]
+[EOF 감지 & Seek]       [SDL 렌더링]
+```
+
+**출력 예시:**
+```
+🎬 GUI 비디오 플레이어 초기화 완료!
+📹 640x480 @ 25 FPS
+⏱️  재생 시간: 2.36초 (59 프레임)
+🖥️  VideoToolbox 하드웨어 가속 활성화!
+
+🔍 디코더 워커 시작
+🎬 렌더링 워커 시작 - 프레임 간격: 40ms
+
+🎮 조작법:
+  SPACE: 재생/일시정지
+  ↑/↓: 재생 속도 조절
+  ESC/Q: 종료
+  클릭: 윈도우 닫기로 종료
+
+🖥️ 🖥️ 🖥️ 🖥️ 🖥️ ... (하드웨어 디코딩 표시)
+🔄 파일 끝 도달, 처음부터 다시 재생 (프레임: 59)
+🔍 디코더 워커 종료 (총 118 프레임 처리)
+🎬 렌더링 워커 종료 (총 118 프레임 렌더링)
+```
+
+**기술적 특징:**
+- **메모리 효율성**: Producer-Consumer 패턴으로 최대 10프레임 큐 제한
+- **스레드 안전성**: std::mutex와 condition_variable로 동기화
+- **하드웨어 최적화**: av_hwframe_transfer_data로 GPU→CPU 메모리 전송
+- **동적 포맷 처리**: 런타임에 픽셀 포맷 변경 대응
+- **정확한 타이밍**: std::chrono 기반 프레임 타이밍 제어
 
 **🎮 조작법**:
 - `SPACE`: 재생/일시정지

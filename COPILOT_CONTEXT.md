@@ -10,27 +10,34 @@ VS Code에서 이 프로젝트 폴더를 열면 Copilot이 자동으로 프로�
 
 ```
 "이전에 M1 Mac FFmpeg 프로젝트를 함께 개발했는데, 
-VideoToolbox 하드웨어 가속과 실시간 비디오 플레이어까지 완성했어. 
+VideoToolbox 하드웨어 가속과 GUI 비디오 플레이어까지 완성했어. 
+SDL2 기반 윈도우 플레이어와 루프 재생 기능도 모두 구현했고,
 DEVELOPMENT_LOG.md 파일을 참고해서 이어서 작업하고 싶어."
 ```
 
 ### 3. 🔍 컨텍스트 힌트 제공
-- **현재 상태**: "모든 기본 기능이 완성되어 있고 GitHub에 업로드됨"
-- **기술 스택**: "FFmpeg 7.1.1 + M1 Mac VideoToolbox + C++17 + CMake"
+- **현재 상태**: "GUI 비디오 플레이어와 하드웨어 가속 벤치마크까지 완성"
+- **기술 스택**: "FFmpeg 7.1.1 + M1 VideoToolbox + SDL2 + C++17 + 멀티스레딩"
 - **핵심 파일**: 
-  - `examples/advanced/video_player.cpp` (멀티스레드 비디오 플레이어)
-  - `examples/advanced/hardware_decoder.cpp` (M1 하드웨어 가속)
-  - `CMakeLists.txt` (M1 최적화 빌드)
+  - `examples/advanced/gui_video_player.cpp` (SDL2 GUI 플레이어, 루프 재생)
+  - `examples/advanced/hardware_decoder.cpp` (루프 벤치마크, HW→SW 전송)
+  - `examples/advanced/video_player.cpp` (콘솔 비디오 플레이어)
+  - `CMakeLists.txt` (SDL2 통합, M1 최적화 빌드)
 
 ### 4. 🎯 진행 상황 공유
-"hardware-decoder로 VideoToolbox 하드웨어 가속이 정상 동작하고,
-video-player로 실시간 재생도 완성했어. 다음엔 [원하는 기능]을 추가하고 싶어."
+"GUI 비디오 플레이어(SDL2)가 완성되어서 실제 윈도우에서 비디오 재생되고,
+하드웨어 디코더는 루프 재생으로 420+ FPS 성능이 나와. 
+멀티스레딩과 자동 루프, 키보드 제어까지 모두 구현했어."
 
 ## 📝 프로젝트 상태 요약 (Copilot 참고용)
 
 ### ✅ 완성된 기능들
-- M1 Mac VideoToolbox 하드웨어 가속 디코딩
-- 실시간 멀티스레드 비디오 플레이어  
+- M1 Mac VideoToolbox 하드웨어 가속 디코딩 (루프 벤치마크 포함)
+- SDL2 기반 GUI 비디오 플레이어 (윈도우 기반 실시간 재생)
+- 멀티스레드 아키텍처 (디코더/렌더러 분리)
+- 자동 루프 재생 (EOF 감지 시 seek & flush)
+- 키보드 제어 (재생/일시정지, 속도 조절)
+- 실시간 콘솔 비디오 플레이어  
 - RTMP 라이브 스트리밍
 - 실시간 비디오 필터링
 - VS Code 완전 통합 (IntelliSense, 디버깅, 빌드)
@@ -38,11 +45,17 @@ video-player로 실시간 재생도 완성했어. 다음엔 [원하는 기능]�
 ### 🔧 현재 빌드 상태
 모든 예제가 빌드되고 정상 실행됨:
 - ffmpeg-info, video-analysis, frame-extract, simple-encoder
-- hardware-decoder, video-filter, rtmp-streamer, video-player
+- hardware-decoder (루프 모드 추가), video-filter, rtmp-streamer, video-player
+- gui-video-player (SDL2 GUI 플레이어) ⭐ 신규!
 
 ### 🎬 테스트 완료 항목
-- H.264/HEVC 하드웨어 디코딩 (330+ FPS)
-- 실시간 비디오 재생 (하드웨어 가속)
+- H.264/HEVC 하드웨어 디코딩 (420+ FPS, 루프 재생)
+- SDL2 GUI 윈도우에서 실시간 비디오 재생
+- 하드웨어→소프트웨어 프레임 전송 (NV12 포맷)
+- 멀티스레드 Producer-Consumer 패턴
+- 자동 루프 재생 및 디코더 플러시
+- 동적 픽셀 포맷 변환 (SwsContext)
+- 키보드 이벤트 처리 및 재생 속도 제어
 - 다양한 비디오 필터 효과
 - RTMP 스트리밍 (웹캠 지원)
 
