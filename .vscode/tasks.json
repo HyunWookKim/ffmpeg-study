@@ -149,6 +149,34 @@
                 "focus": true,
                 "panel": "new"
             }
+        },
+        {
+            "label": "test-gui-player",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/gui-video-player",
+            "args": ["${workspaceFolder}/media/samples/h264_sample.mp4"],
+            "group": "test",
+            "dependsOn": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "new"
+            }
+        },
+        {
+            "label": "test-gui-player-hevc",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/gui-video-player",
+            "args": ["${workspaceFolder}/media/samples/hevc_sample.mp4"],
+            "group": "test",
+            "dependsOn": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "new"
+            }
         }
     ]
 }

@@ -23,8 +23,17 @@ pkg_check_modules(FFMPEG REQUIRED
     libavfilter
 )
 
+# Find SDL2 for GUI video player
+find_package(SDL2 QUIET)
+if(NOT SDL2_FOUND)
+    pkg_check_modules(SDL2 QUIET sdl2)
+endif()
+
 # Include directories
 include_directories(${FFMPEG_INCLUDE_DIRS})
+if(SDL2_FOUND)
+    include_directories(${SDL2_INCLUDE_DIRS})
+endif()
 
 # Create main executable
 add_executable(ffmpeg-info src/ffmpeg_info.cpp)
@@ -72,6 +81,16 @@ target_compile_options(realtime-processor PRIVATE ${FFMPEG_CFLAGS_OTHER})
 add_executable(video-player examples/advanced/video_player.cpp)
 target_link_libraries(video-player ${FFMPEG_LIBRARIES})
 target_compile_options(video-player PRIVATE ${FFMPEG_CFLAGS_OTHER})
+
+# GUI video player with SDL2 (if available)
+if(SDL2_FOUND)
+    add_executable(gui-video-player examples/advanced/gui_video_player.cpp)
+    target_link_libraries(gui-video-player ${FFMPEG_LIBRARIES} ${SDL2_LIBRARIES})
+    target_compile_options(gui-video-player PRIVATE ${FFMPEG_CFLAGS_OTHER} ${SDL2_CFLAGS_OTHER})
+    message(STATUS "✅ GUI 비디오 플레이어가 빌드에 포함됩니다 (SDL2 발견)")
+else()
+    message(STATUS "⚠️  SDL2를 찾을 수 없어 GUI 플레이어가 제외됩니다. 'brew install sdl2'로 설치하세요.")
+endif()
 
 # Set compiler flags for better debugging
 set(CMAKE_BUILD_TYPE Debug)

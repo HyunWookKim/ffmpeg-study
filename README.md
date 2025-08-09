@@ -16,6 +16,7 @@ M1 Mac에서 FFmpeg와 VideoToolbox 하드웨어 가속을 활용한 고급 비�
 
 ### 🎬 고급 예제
 - **비디오 플레이어**: 실시간 하드웨어 가속 재생
+- **GUI 비디오 플레이어**: SDL2 기반 윈도우 플레이어
 - **실시간 스트리밍**: RTMP 프로토콜 지원
 - **비디오 필터**: 실시간 영상 효과 처리
 - **멀티스레드 처리**: 저지연 비디오 파이프라인
@@ -40,7 +41,8 @@ ffmpeg-study/
 │       ├── video_filter.cpp     # 비디오 필터
 │       ├── rtmp_streamer.cpp    # 실시간 스트리밍
 │       ├── realtime_processor.cpp # 실시간 처리
-│       └── video_player.cpp     # 비디오 플레이어
+│       ├── video_player.cpp     # 비디오 플레이어
+│       └── gui_video_player.cpp # GUI 비디오 플레이어
 ├── media/samples/               # 테스트 비디오 파일
 ├── .vscode/                     # VS Code 설정
 └── build/                       # 빌드 출력
@@ -82,6 +84,9 @@ make -j4
 # 비디오 플레이어 실행
 ./build/video-player media/samples/h264_sample.mp4
 
+# GUI 비디오 플레이어 실행 (SDL2 윈도우)
+./build/gui-video-player media/samples/h264_sample.mp4
+
 # 실시간 필터 적용
 ./build/video-filter input.mp4 output.mp4 blur
 ```
@@ -114,7 +119,16 @@ Hardware acceleration: YES (VideoToolbox)
 🎬 Frame 30 | Time: 1.20s | 🖥️ HW | Queue: 2
 ```
 
-### 3. 비디오 필터 처리
+### 3. GUI 비디오 플레이어
+```bash
+./build/gui-video-player media/samples/h264_sample.mp4
+```
+- 실제 윈도우에서 비디오 재생
+- SDL2 기반 GUI 인터페이스
+- 키보드 제어: SPACE(일시정지), ↑↓(속도조절), ESC(종료)
+- VideoToolbox 하드웨어 가속 지원
+
+### 4. 비디오 필터 처리
 ```bash
 ./build/video-filter input.mp4 blurred.mp4 blur
 ```
@@ -122,7 +136,7 @@ Hardware acceleration: YES (VideoToolbox)
 - 회전, 엣지 검출, 빈티지 효과
 - 실시간 필터 체인 지원
 
-### 4. RTMP 라이브 스트리밍
+### 5. RTMP 라이브 스트리밍
 ```bash
 ./build/rtmp-streamer webcam rtmp://localhost/live/test
 ```
