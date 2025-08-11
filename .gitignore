@@ -1,5 +1,6 @@
 # Build directories
 build/
+build-vs/
 *.o
 *.a
 *.so
@@ -13,6 +14,14 @@ build/
 *.swp
 *.swo
 *~
+
+# Visual Studio files
+.vs/
+*.vcxproj.user
+*.sln.docstates
+*.suo
+*.user
+*.userosscache
 
 # macOS
 .DS_Store

@@ -108,6 +108,59 @@ This project supports multiple platforms with platform-specific optimizations:
    .\build\Debug\gui-video-player.exe .\media\samples\h264_sample.mp4
    ```
 
+### Windows + Visual Studio 2022 Setup 🎯
+
+For full IDE development experience with Visual Studio 2022:
+
+1. **Prerequisites**: 
+   - Visual Studio 2022 (Community/Professional/Enterprise)
+   - Follow Windows Setup steps above (FFmpeg + SDL2)
+
+2. **Generate Visual Studio Project**:
+   ```powershell
+   # Generate Visual Studio 2022 solution files
+   cmake -B build-vs -S . -G "Visual Studio 17 2022" -A x64
+   ```
+
+3. **Open in Visual Studio**:
+   ```powershell
+   # Method 1: Open from PowerShell
+   start .\build-vs\ffmpeg-study.sln
+   
+   # Method 2: Open in Visual Studio
+   # File → Open → Project/Solution → build-vs/ffmpeg-study.sln
+   ```
+
+4. **Visual Studio Features**:
+   - **Solution Explorer**: All 9 projects organized
+   - **IntelliSense**: Full FFmpeg API auto-completion
+   - **Debugging**: Set breakpoints, step through code (F5)
+   - **Build**: Individual projects or entire solution (Ctrl+Shift+B)
+   - **Project Structure**:
+     ```
+     ffmpeg-study (Solution)
+     ├── ffmpeg-info          # Media information analysis
+     ├── video-analysis       # Frame-by-frame analysis  
+     ├── frame-extract        # Frame extraction utility
+     ├── simple-encoder       # Video encoding examples
+     ├── hardware-decoder     # Hardware acceleration testing
+     ├── video-filter         # Real-time video effects
+     ├── rtmp-streamer        # Live streaming
+     ├── video-player         # Console video player
+     └── gui-video-player     # SDL2 GUI player ⭐
+     ```
+
+5. **Building and Running**:
+   - **Build All**: Right-click solution → Build Solution
+   - **Run Project**: Right-click project → Set as StartUp Project → F5
+   - **Debug Mode**: Full debugging with breakpoints
+   - **Release Mode**: Optimized performance builds
+
+6. **CMake Integration**:
+   - **Main Config**: `CMakeLists.txt` (project root)
+   - **Regenerate**: Re-run cmake command to update project files
+   - **Clean Build**: Delete `build-vs` folder and regenerate
+
 ### macOS Setup
 
 1. **Install Dependencies**:
@@ -135,8 +188,12 @@ This project supports multiple platforms with platform-specific optimizations:
 
 ### Windows Specific
 - **Windows 10/11**: x64 architecture
-- **Visual Studio 2022**: Community edition or higher
+- **Compiler Options**:
+  - **Command Line**: Visual Studio 2022 Build Tools + CMake
+  - **IDE Development**: Visual Studio 2022 (Community/Professional/Enterprise)
 - **PowerShell**: For build commands
+- **FFmpeg**: Pre-built shared libraries (BtbN builds)
+- **SDL2**: Official development libraries for GUI support
 
 ### macOS Specific  
 - **macOS**: 11.0 Big Sur or higher
@@ -223,7 +280,9 @@ Hardware acceleration: YES (VideoToolbox)
 
 *Hardware acceleration actual throughput includes memory transfer
 
-## 🛠️ VS Code Development Environment
+## 🛠️ Development Environment Options
+
+### Option 1: VS Code (Cross-Platform)
 
 The project is fully integrated with VS Code:
 
@@ -232,12 +291,31 @@ The project is fully integrated with VS Code:
 - **Build Tasks**: One-click build and test
 - **Problem Detection**: Real-time compilation error detection
 
-### Build in VS Code
+**Build in VS Code:**
 1. `Cmd+Shift+P` (macOS) or `Ctrl+Shift+P` (Windows/Linux)
 2. Select "Tasks: Run Task"
 3. Select "build"
 
-### Build in Terminal
+### Option 2: Visual Studio 2022 (Windows)
+
+For Windows developers who prefer full IDE experience:
+
+- **Project Generation**: `cmake -B build-vs -S . -G "Visual Studio 17 2022" -A x64`
+- **Solution File**: `build-vs\ffmpeg-study.sln`
+- **Features**:
+  - **Full Debugging**: Breakpoints, step-through, watch variables
+  - **IntelliSense**: Advanced code completion and analysis
+  - **Project Management**: Solution Explorer with organized projects
+  - **Build Configuration**: Debug/Release modes
+  - **Integrated Git**: Built-in version control
+
+**Getting Started with Visual Studio:**
+1. Generate project: `cmake -B build-vs -S . -G "Visual Studio 17 2022" -A x64`
+2. Open solution: `start .\build-vs\ffmpeg-study.sln`
+3. Set startup project: Right-click desired project → "Set as StartUp Project"
+4. Build and run: Press F5 for debugging or Ctrl+F5 for release run
+
+### Command Line Build (Universal)
 ```bash
 # Project configuration
 cmake -B build -S .
@@ -287,6 +365,18 @@ else if (filter_name == "my_custom_filter") {
 - `av_frame_alloc()` → `av_frame_free()`
 - `av_packet_alloc()` → `av_packet_free()`
 - `avcodec_alloc_context3()` → `avcodec_free_context()`
+
+### Project Configuration
+- **Main CMake Config**: `CMakeLists.txt` (project root)
+- **Cross-Platform Support**: Automatic FFmpeg and SDL2 detection
+- **Build Generators**:
+  - **VS Code/Command Line**: `cmake -B build -S .`
+  - **Visual Studio 2022**: `cmake -B build-vs -S . -G "Visual Studio 17 2022" -A x64`
+  - **Ninja (Fast)**: `cmake -B build-ninja -S . -G "Ninja"`
+- **Build Outputs**: 
+  - **Standard**: `build/` directory
+  - **Visual Studio**: `build-vs/` directory with `.sln` and `.vcxproj` files
+- **Regeneration**: Delete build directory and re-run cmake to update configuration
 
 ## 🚀 Roadmap
 
