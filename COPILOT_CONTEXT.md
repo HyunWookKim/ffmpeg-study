@@ -1,96 +1,171 @@
-# GitHub Copilot 대화 컨텍스트 가이드
+# GitHub Copilot Context Guide (Conversation History)
 
-## 🤖 다음 세션에서 Copilot과 대화를 이어가는 방법
+## 🤖 How to Continue with Copilot in Next Sessions
 
-### 1. 📂 프로젝트 파일 열기
-VS Code에서 이 프로젝트 폴더를 열면 Copilot이 자동으로 프로젝트 구조를 인식합니다.
+### 1. 📂 Opening Project Files
+When you open this project folder in VS Code, Copilot automatically recognizes the project structure.
 
-### 2. 💬 대화 시작 시 언급할 키워드
-다음 세션에서 Copilot에게 이렇게 말하세요:
+### 2. 💬 Key Phrases to Start Next Session
+Tell Copilot in the next session:
 
 ```
-"이전에 M1 Mac FFmpeg 프로젝트를 함께 개발했는데, 
-VideoToolbox 하드웨어 가속과 GUI 비디오 플레이어까지 완성했어. 
-SDL2 기반 윈도우 플레이어와 루프 재생 기능도 모두 구현했고,
-DEVELOPMENT_LOG.md 파일을 참고해서 이어서 작업하고 싶어."
+"I previously developed an M1 Mac FFmpeg project with VideoToolbox hardware acceleration 
+and GUI video player. Now it's been ported to Windows with cross-platform support, 
+SDL2 integration, and all Korean text converted to English. 
+Please refer to DEVELOPMENT_LOG.md to continue our work."
 ```
 
-### 3. 🔍 컨텍스트 힌트 제공
-- **현재 상태**: "GUI 비디오 플레이어와 하드웨어 가속 벤치마크까지 완성"
-- **기술 스택**: "FFmpeg 7.1.1 + M1 VideoToolbox + SDL2 + C++17 + 멀티스레딩"
-- **핵심 파일**: 
-  - `examples/advanced/gui_video_player.cpp` (SDL2 GUI 플레이어, 루프 재생)
-  - `examples/advanced/hardware_decoder.cpp` (루프 벤치마크, HW→SW 전송)
-  - `examples/advanced/video_player.cpp` (콘솔 비디오 플레이어)
-  - `CMakeLists.txt` (SDL2 통합, M1 최적화 빌드)
+### 3. 🔍 Context Hints to Provide
+- **Current Status**: "Cross-platform FFmpeg project with Windows support, GUI video player, and hardware acceleration"
+- **Technology Stack**: "FFmpeg 7.1.1 + VideoToolbox (macOS) + D3D11/DXVA2 (Windows disabled) + SDL2 + C++17 + Multithreading"
+- **Key Files**: 
+  - `examples/advanced/gui_video_player.cpp` (SDL2 GUI player with enhanced progress bar)
+  - `examples/advanced/hardware_decoder.cpp` (Hardware acceleration, platform-specific)
+  - `examples/advanced/video_player.cpp` (Console video player with auto-exit)
+  - `CMakeLists.txt` (Cross-platform build with SDL2 integration)
+  - `WINDOWS_SETUP.md` (Windows development environment guide)
 
-### 4. 🎯 진행 상황 공유
-"GUI 비디오 플레이어(SDL2)가 완성되어서 실제 윈도우에서 비디오 재생되고,
-하드웨어 디코더는 루프 재생으로 420+ FPS 성능이 나와. 
-멀티스레딩과 자동 루프, 키보드 제어까지 모두 구현했어."
+### 4. 🎯 Progress Status to Share
+"The project has been successfully ported to Windows with cross-platform support.
+All 9 examples build and run on Windows. SDL2 GUI video player works perfectly.
+Korean text has been converted to English, and progress bars display properly.
+Both macOS VideoToolbox and Windows software decoding are supported."
 
-## 📝 프로젝트 상태 요약 (Copilot 참고용)
+## 📝 Project Status Summary (For Copilot Reference)
 
-### ✅ 완성된 기능들
-- M1 Mac VideoToolbox 하드웨어 가속 디코딩 (루프 벤치마크 포함)
-- SDL2 기반 GUI 비디오 플레이어 (윈도우 기반 실시간 재생)
-- 멀티스레드 아키텍처 (디코더/렌더러 분리)
-- 자동 루프 재생 (EOF 감지 시 seek & flush)
-- 키보드 제어 (재생/일시정지, 속도 조절)
-- 실시간 콘솔 비디오 플레이어  
-- RTMP 라이브 스트리밍
-- 실시간 비디오 필터링
-- VS Code 완전 통합 (IntelliSense, 디버깅, 빌드)
+### ✅ Session 3 Achievements (Windows Cross-Platform Support)
+- ✅ **Windows 10/11 Compatibility**: Full Visual Studio 2022 support with FFmpeg 7.1.1
+- ✅ **Cross-Platform Build System**: Modified CMakeLists.txt for Windows/macOS/Linux support
+- ✅ **SDL2 Integration**: SDL2 2.28.5 successfully integrated for Windows GUI video player
+- ✅ **Internationalization**: All Korean text converted to English with UTF-8 encoding fixes
+- ✅ **Enhanced GUI Player**: Improved progress bar display from repetitive [SW]/[HW] to percentage format
+- ✅ **Documentation**: Complete Windows setup guide (WINDOWS_SETUP.md) and updated README.md
+- ✅ **Character Encoding**: Fixed emoji/Unicode issues on Windows with ASCII alternatives
+- ✅ **Git Integration**: Proper .gitignore for Windows FFmpeg and SDL2 files
 
-### 🔧 현재 빌드 상태
-모든 예제가 빌드되고 정상 실행됨:
-- ffmpeg-info, video-analysis, frame-extract, simple-encoder
-- hardware-decoder (루프 모드 추가), video-filter, rtmp-streamer, video-player
-- gui-video-player (SDL2 GUI 플레이어) ⭐ 신규!
+### ✅ Previous Sessions (macOS VideoToolbox)
+- M1 Mac VideoToolbox hardware acceleration decoding (loop benchmark included)
+- SDL2-based GUI video player (real-time window-based playback)
+- Multi-threaded architecture (decoder/renderer separation)
+- Automatic loop playback (EOF detection with seek & flush)
+- Keyboard controls (play/pause, speed adjustment)
+- Real-time console video player  
+- RTMP live streaming
+- Real-time video filtering
+- Complete VS Code integration (IntelliSense, debugging, build)
 
-### 🎬 테스트 완료 항목
-- H.264/HEVC 하드웨어 디코딩 (420+ FPS, 루프 재생)
-- SDL2 GUI 윈도우에서 실시간 비디오 재생
-- 하드웨어→소프트웨어 프레임 전송 (NV12 포맷)
-- 멀티스레드 Producer-Consumer 패턴
-- 자동 루프 재생 및 디코더 플러시
-- 동적 픽셀 포맷 변환 (SwsContext)
-- 키보드 이벤트 처리 및 재생 속도 제어
-- 다양한 비디오 필터 효과
-- RTMP 스트리밍 (웹캠 지원)
+### 🔧 Current Build Status
+All examples build and run successfully on both Windows and macOS:
 
-### 🚀 향후 확장 가능 영역
-- WebRTC 브라우저 통신
-- Core ML AI 분석
-- Metal Performance Shaders
-- Qt 기반 GUI
-- 클라우드 스트리밍 연동
+**Windows (Visual Studio 2022 + FFmpeg 7.1.1):**
+- ✅ ffmpeg-info, video-analysis, frame-extract, simple-encoder
+- ✅ hardware-decoder (software fallback), video-filter, rtmp-streamer, video-player
+- ✅ gui-video-player (SDL2 GUI with enhanced progress bar) ⭐ Cross-platform!
 
-## 💡 Copilot에게 효과적으로 컨텍스트 전달하는 팁
+**macOS (VideoToolbox Hardware Acceleration):**
+- ✅ All examples with M1 VideoToolbox hardware acceleration
+- ✅ 420+ FPS performance with hardware decoding
 
-### 1. 파일 첨부하기
-대화 시 관련 파일을 첨부하면 Copilot이 현재 상태를 더 잘 이해합니다:
-- `DEVELOPMENT_LOG.md` (전체 개발 과정)
-- `README.md` (프로젝트 개요)
-- `ADVANCED_GUIDE.md` (상세 기능 설명)
+### 🎬 Testing Completed
+**Windows Testing:**
+- SDL2 GUI window with real-time video playback
+- Software decoding with proper performance
+- Enhanced progress bar: [DECODE] [####################] 100% (59/59) SW
+- UTF-8 character encoding with ASCII-only output
+- Auto-exit functionality and improved queue monitoring
 
-### 2. 구체적인 요청하기
-❌ "비디오 관련 기능 추가해줘"
-✅ "video_player.cpp에 재생 속도 조절 기능을 추가하고 싶어. 현재 멀티스레드 구조를 유지하면서 1x, 2x, 0.5x 속도로 재생할 수 있게 해줘."
+**macOS Testing (Previous Sessions):**
+- H.264/HEVC hardware decoding (420+ FPS, loop playback)
+- Hardware→software frame transfer (NV12 format)
+- Multi-threaded Producer-Consumer pattern
+- Automatic loop playback and decoder flush
+- Dynamic pixel format conversion (SwsContext)
+- Keyboard event handling and playback speed control
+- Various video filter effects
+- RTMP streaming (webcam support)
 
-### 3. 현재 상태 명시하기
-"현재 VideoToolbox 하드웨어 가속이 정상 동작하고 있고, 
-video_player.cpp의 producer_thread와 display_thread가 
-frame_queue로 통신하는 구조야."
+### 🚀 Future Enhancement Areas
+- WebRTC browser communication
+- Windows D3D11/DXVA2 hardware acceleration (currently disabled due to compatibility)
+- Core ML AI analysis (macOS)
+- Metal Performance Shaders (macOS)
+- Qt-based cross-platform GUI
+- Cloud streaming integration
+- Video filter pixel format improvements
 
-## 🔄 세션 연결 체크리스트
+## 💡 Tips for Effective Context Transfer to Copilot
 
-다음 세션 시작 시 확인사항:
+### 1. Attach Relevant Files
+When starting a conversation, attach these files so Copilot understands the current state:
+- `DEVELOPMENT_LOG.md` (Complete development process across all sessions)
+- `README.md` (Project overview with cross-platform setup)
+- `ADVANCED_GUIDE.md` (Detailed feature descriptions)
+- `WINDOWS_SETUP.md` (Windows development environment guide)
 
-- [ ] 프로젝트 폴더가 VS Code에서 열려있는가?
-- [ ] `DEVELOPMENT_LOG.md` 파일을 Copilot에게 보여줬는가?
-- [ ] 현재 작업하고 싶은 구체적인 목표를 명시했는가?
-- [ ] 기존 코드의 어떤 부분을 수정/확장하고 싶은지 설명했는가?
+### 2. Make Specific Requests
+❌ "Add video-related features"
+✅ "I want to add playback speed control to video_player.cpp. While maintaining the current multi-threaded structure, enable 1x, 2x, 0.5x speed playback."
 
-이렇게 하면 Copilot이 이전 대화 내용을 빠르게 파악하고 
-연속성 있는 개발을 도와줄 수 있습니다! 🚀
+### 3. Specify Current State
+"Currently VideoToolbox hardware acceleration works on macOS, and Windows uses software decoding. 
+The video_player.cpp has producer_thread and display_thread communicating via frame_queue."
+
+## 📊 Session History Summary
+
+### Session 1 (macOS VideoToolbox Foundation)
+- Initial M1 Mac FFmpeg project setup
+- VideoToolbox hardware acceleration implementation
+- Basic video analysis and frame extraction examples
+
+### Session 2 (Advanced Features & GUI)
+- SDL2 GUI video player development
+- Multi-threaded architecture with producer-consumer pattern
+- Hardware acceleration benchmarking and loop playback
+- RTMP streaming and real-time video filtering
+
+### Session 3 (Windows Cross-Platform Support) - **Latest**
+- **Windows 10/11 compatibility** with Visual Studio 2022
+- **Cross-platform CMakeLists.txt** with conditional compilation
+- **SDL2 Windows integration** for GUI video player
+- **English internationalization** (Korean → English conversion)
+- **Enhanced progress bar display** (percentage format with visual bar)
+- **UTF-8 encoding fixes** and emoji → ASCII conversion
+- **Comprehensive Windows documentation** (WINDOWS_SETUP.md)
+- **Git repository cleanup** with proper .gitignore
+
+## 🔄 Session Continuation Checklist
+
+When starting the next session, verify:
+
+- [ ] Project folder is open in VS Code?
+- [ ] Have you shown `DEVELOPMENT_LOG.md` to Copilot?
+- [ ] Have you specified concrete goals for what you want to work on?
+- [ ] Have you explained which parts of existing code you want to modify/extend?
+- [ ] Have you mentioned the current platform (Windows/macOS) you're working on?
+
+This approach enables Copilot to quickly understand the previous conversation context 
+and provide continuous development assistance! 🚀
+
+## 🎯 Ready-to-Use Context Phrases for Next Session
+
+**For Windows Development:**
+```
+"This is a cross-platform FFmpeg study project. It was originally developed on M1 Mac 
+with VideoToolbox hardware acceleration, and recently ported to Windows with SDL2 support. 
+All 9 examples build successfully on Windows with Visual Studio 2022 and FFmpeg 7.1.1. 
+The GUI video player works perfectly with enhanced progress bar display."
+```
+
+**For macOS Development:**
+```
+"This FFmpeg project has M1 VideoToolbox hardware acceleration achieving 420+ FPS performance. 
+The SDL2 GUI video player, multi-threaded architecture, and automatic loop playback are all complete. 
+It also supports Windows cross-platform compatibility."
+```
+
+**For General Feature Development:**
+```
+"This is a mature FFmpeg project with cross-platform support (Windows/macOS), 
+SDL2 GUI integration, hardware acceleration, and comprehensive documentation. 
+Please check DEVELOPMENT_LOG.md for the complete history of 3 development sessions."
+```
