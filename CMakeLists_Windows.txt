@@ -1,112 +1,156 @@
+# =============================================================================
+# FFmpeg 학습용 프로젝트 - Windows 전용 CMake 설정 파일
+# =============================================================================
+# 이 파일은 Windows 환경에서 winget으로 설치한 FFmpeg를 사용하는 경우의 설정입니다.
+# 일반적인 CMakeLists.txt와 달리 시스템에 설치된 FFmpeg 경로를 직접 지정합니다.
+
+# 최소 CMake 버전 요구사항
 cmake_minimum_required(VERSION 3.20)
+
+# 프로젝트 이름 설정
 project(ffmpeg-study)
 
+# C++ 표준 버전 설정 (C++17 사용)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Windows specific settings for FFmpeg
+# =============================================================================
+# Windows 환경에서 winget으로 설치한 FFmpeg 설정
+# =============================================================================
+# winget install "FFmpeg (Essentials Build)" 명령으로 설치한 FFmpeg의 경로입니다.
+
+# Windows 환경 설정
+# 중요: WIN32는 Windows 32비트만이 아니라 모든 Windows(32bit+64bit)를 의미합니다!
 if(WIN32)
-    # FFmpeg installed via winget
+    # winget으로 설치된 FFmpeg의 기본 경로
+    # 사용자명과 설치 버전에 따라 경로가 다를 수 있으므로 확인 필요
     set(FFMPEG_ROOT "C:/Users/wise.kim/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-7.1.1-full_build")
-    set(FFMPEG_INCLUDE_DIR "${FFMPEG_ROOT}/include")
-    set(FFMPEG_LIB_DIR "${FFMPEG_ROOT}/lib")
+    set(FFMPEG_INCLUDE_DIR "${FFMPEG_ROOT}/include")  # 헤더 파일 경로
+    set(FFMPEG_LIB_DIR "${FFMPEG_ROOT}/lib")          # 라이브러리 파일 경로
     
-    # Check if include directory exists
+    # 현재 빌드 아키텍처 확인 및 표시
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        message(STATUS "🏗️  Windows 64비트 빌드 환경")
+        # 64비트 전용 라이브러리가 별도 폴더에 있다면:
+        # set(FFMPEG_LIB_DIR "${FFMPEG_ROOT}/lib/x64")
+    else()
+        message(STATUS "🏗️  Windows 32비트 빌드 환경")
+        # 32비트 전용 라이브러리가 별도 폴더에 있다면:
+        # set(FFMPEG_LIB_DIR "${FFMPEG_ROOT}/lib/x86")
+    endif()
+    
+    # FFmpeg 헤더 파일 디렉토리가 실제로 존재하는지 확인
     if(EXISTS "${FFMPEG_INCLUDE_DIR}")
         message(STATUS "Found FFmpeg include directory: ${FFMPEG_INCLUDE_DIR}")
     else()
         message(STATUS "FFmpeg include directory not found at: ${FFMPEG_INCLUDE_DIR}")
-        # Try alternative locations
+        # 대안 경로 확인
         if(EXISTS "${FFMPEG_ROOT}/bin")
-            # This might be a binary-only installation
+            # 실행 파일만 있는 설치인 경우
             message(STATUS "This appears to be a binary-only FFmpeg installation")
             message(STATUS "You may need to download the dev package with headers and libraries")
         endif()
     endif()
     
+    # 컴파일러가 FFmpeg 헤더 파일을 찾을 수 있도록 경로 추가
     include_directories(${FFMPEG_INCLUDE_DIR})
+    # 링커가 FFmpeg 라이브러리 파일을 찾을 수 있도록 경로 추가  
     link_directories(${FFMPEG_LIB_DIR})
     
-    # Windows FFmpeg libraries
+    # Windows용 FFmpeg 라이브러리 목록
     set(FFMPEG_LIBRARIES
-        avformat
-        avcodec
-        avutil
-        swscale
-        swresample
-        avfilter
+        avformat    # 파일 형식 처리 (MP4, AVI 등)
+        avcodec     # 코덱 처리 (H.264, HEVC 등)
+        avutil      # 유틸리티 함수들
+        swscale     # 이미지 크기 변환
+        swresample  # 오디오 리샘플링  
+        avfilter    # 비디오/오디오 필터
     )
+# macOS ARM64 (Apple Silicon) 환경 설정  
 elseif(APPLE AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
-    # Homebrew ARM64 path for Apple Silicon
+    # Homebrew ARM64 설치 경로를 CMake 탐색 경로에 추가
     set(CMAKE_PREFIX_PATH "/opt/homebrew" ${CMAKE_PREFIX_PATH})
     include_directories("/opt/homebrew/include")
     link_directories("/opt/homebrew/lib")
     
-    # Find FFmpeg libraries using pkg-config on macOS
+    # pkg-config를 사용하여 FFmpeg 라이브러리 자동 탐지
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(FFMPEG REQUIRED 
-        libavformat 
-        libavcodec 
-        libavutil 
-        libswscale 
-        libswresample
-        libavfilter
+        libavformat    # 파일 형식 처리
+        libavcodec     # 코덱 처리
+        libavutil      # 유틸리티
+        libswscale     # 이미지 변환
+        libswresample  # 오디오 리샘플링
+        libavfilter    # 필터
     )
     
+    # FFmpeg 라이브러리 목록을 변수에 저장
     set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES})
+    
+# Linux 또는 기타 UNIX 계열 시스템 설정
 else()
-    # Linux or other systems
+    # pkg-config를 사용하여 시스템에 설치된 FFmpeg 라이브러리 탐지
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(FFMPEG REQUIRED 
-        libavformat 
-        libavcodec 
-        libavutil 
-        libswscale 
-        libswresample
-        libavfilter
+        libavformat    # 파일 형식 처리
+        libavcodec     # 코덱 처리
+        libavutil      # 유틸리티
+        libswscale     # 이미지 변환
+        libswresample  # 오디오 리샘플링
+        libavfilter    # 필터
     )
     
+    # FFmpeg 라이브러리 목록을 변수에 저장
     set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES})
 endif()
 
-# Find SDL2 for GUI video player (optional)
-find_package(SDL2 QUIET)
+# =============================================================================
+# SDL2 라이브러리 설정 (GUI 비디오 플레이어용, 선택사항)
+# =============================================================================
+# SDL2가 시스템에 설치되어 있는지 확인
+find_package(SDL2 QUIET)  # QUIET: 찾지 못해도 오류 메시지 출력 안함
 
-# Create main executable
+# =============================================================================
+# 실행 파일 생성 및 라이브러리 링크 설정
+# =============================================================================
+
+# 1. FFmpeg 정보 조회 도구
 add_executable(ffmpeg-info src/ffmpeg_info.cpp)
 target_link_libraries(ffmpeg-info ${FFMPEG_LIBRARIES})
 
-# Create video analysis example
+# 2. 비디오 분석 예제
 add_executable(video-analysis examples/video_analysis.cpp)
 target_link_libraries(video-analysis ${FFMPEG_LIBRARIES})
 
-# Create frame extraction example
+# 3. 프레임 추출 예제
 add_executable(frame-extract examples/frame_extraction.cpp)
 target_link_libraries(frame-extract ${FFMPEG_LIBRARIES})
 
-# Create simple encoder example
+# 4. 간단한 인코더 예제
 add_executable(simple-encoder examples/simple_encoder.cpp)
 target_link_libraries(simple-encoder ${FFMPEG_LIBRARIES})
 
-# === Advanced Examples ===
+# =============================================================================
+# 고급 예제들 (Advanced Examples)
+# =============================================================================
 
-# Hardware accelerated decoder (for Windows, this will use software decoding)
+# 5. 하드웨어 가속 디코더 (Windows에서는 소프트웨어 디코딩 사용)
 add_executable(hardware-decoder examples/advanced/hardware_decoder.cpp)
 target_link_libraries(hardware-decoder ${FFMPEG_LIBRARIES})
 
-# Advanced video filter processor
+# 6. 고급 비디오 필터 프로세서
 add_executable(video-filter examples/advanced/video_filter.cpp)
 target_link_libraries(video-filter ${FFMPEG_LIBRARIES})
 
-# RTMP live streamer
+# 7. RTMP 라이브 스트리머
 add_executable(rtmp-streamer examples/advanced/rtmp_streamer.cpp)
 target_link_libraries(rtmp-streamer ${FFMPEG_LIBRARIES})
 
-# Hardware accelerated video player
+# 8. 하드웨어 가속 비디오 플레이어
 add_executable(video-player examples/advanced/video_player.cpp)
 target_link_libraries(video-player ${FFMPEG_LIBRARIES})
 
-# GUI video player with SDL2 (if available)
+# 9. GUI 비디오 플레이어 (SDL2 기반, 조건부 빌드)
 if(SDL2_FOUND)
     add_executable(gui-video-player examples/advanced/gui_video_player.cpp)
     target_link_libraries(gui-video-player ${FFMPEG_LIBRARIES} ${SDL2_LIBRARIES})
@@ -115,10 +159,19 @@ else()
     message(STATUS "⚠️  SDL2를 찾을 수 없어 GUI 플레이어가 제외됩니다.")
 endif()
 
-# Set compiler flags for better debugging
+# =============================================================================
+# 컴파일러 디버깅 설정
+# =============================================================================
+# 디버깅을 위한 컴파일러 플래그 설정
+
+# 빌드 타입을 Debug로 설정
 set(CMAKE_BUILD_TYPE Debug)
+
+# 컴파일러별 디버그 플래그 설정
 if(MSVC)
-    set(CMAKE_CXX_FLAGS_DEBUG "/Zi /Od")
+    # Microsoft Visual C++ 컴파일러용 설정
+    set(CMAKE_CXX_FLAGS_DEBUG "/Zi /Od")  # /Zi: 디버그 정보, /Od: 최적화 비활성화
 else()
-    set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
+    # GCC/Clang 컴파일러용 설정
+    set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")   # -g: 디버그 정보, -O0: 최적화 비활성화
 endif()

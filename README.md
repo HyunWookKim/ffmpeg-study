@@ -118,7 +118,7 @@ For full IDE development experience with Visual Studio 2022:
 
 2. **Generate Visual Studio Project**:
    ```powershell
-   # Generate Visual Studio 2022 solution files
+   # Generate Visual Studio 2022 solution files  
    cmake -B build-vs -S . -G "Visual Studio 17 2022" -A x64
    ```
 
@@ -133,9 +133,10 @@ For full IDE development experience with Visual Studio 2022:
 
 4. **Visual Studio Features**:
    - **Solution Explorer**: All 9 projects organized
-   - **IntelliSense**: Full FFmpeg API auto-completion
+   - **IntelliSense**: Full FFmpeg API auto-completion with Korean comments
    - **Debugging**: Set breakpoints, step through code (F5)
    - **Build**: Individual projects or entire solution (Ctrl+Shift+B)
+   - **CMake Integration**: Detailed Korean comments in CMakeLists.txt
    - **Project Structure**:
      ```
      ffmpeg-study (Solution)
@@ -148,6 +149,14 @@ For full IDE development experience with Visual Studio 2022:
      ├── rtmp-streamer        # Live streaming
      ├── video-player         # Console video player
      └── gui-video-player     # SDL2 GUI player ⭐
+
+5. **IntelliSense Issues Fix**:
+   If you encounter database conflicts, close Visual Studio and clean:
+   ```powershell
+   taskkill /f /im devenv.exe
+   Remove-Item -Recurse -Force .\build-vs\.vs -ErrorAction SilentlyContinue
+   start .\build-vs\ffmpeg-study.sln
+   ```
      ```
 
 5. **Building and Running**:
