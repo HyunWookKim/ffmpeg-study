@@ -1,41 +1,42 @@
-# FFmpeg Study - M1 Mac 고급 비디오 처리 프로젝트
+# FFmpeg Study - Cross-Platform Video Processing Project
 
-[![M1 Mac](https://img.shields.io/badge/Apple-M1%20Mac-000000?style=flat&logo=apple&logoColor=white)](https://developer.apple.com/mac/)
+[![Cross-Platform](https://img.shields.io/badge/Platform-Windows%20|%20macOS%20|%20Linux-blue?style=flat)](https://github.com/HyunWookKim/ffmpeg-study)
 [![FFmpeg](https://img.shields.io/badge/FFmpeg-7.1.1-green?style=flat&logo=ffmpeg)](https://ffmpeg.org/)
 [![C++17](https://img.shields.io/badge/C++-17-blue?style=flat&logo=cplusplus)](https://isocpp.org/)
-[![VideoToolbox](https://img.shields.io/badge/VideoToolbox-Hardware%20Acceleration-orange?style=flat)](https://developer.apple.com/documentation/videotoolbox)
+[![SDL2](https://img.shields.io/badge/SDL2-2.28.5-orange?style=flat)](https://www.libsdl.org/)
 
-M1 Mac에서 FFmpeg와 VideoToolbox 하드웨어 가속을 활용한 고급 비디오 처리 기능들을 학습할 수 있는 종합적인 프로젝트입니다.
+A comprehensive project for learning advanced video processing with FFmpeg and hardware acceleration across Windows, macOS, and Linux platforms.
 
-## ✨ 주요 기능
+## ✨ Key Features
 
-### 🚀 하드웨어 가속
-- **VideoToolbox 통합**: M1 Mac의 전용 미디어 엔진 활용
-- **H.264/HEVC 지원**: 주요 비디오 코덱의 하드웨어 디코딩
-- **성능 최적화**: CPU 사용량 60-80% 절약
+### 🚀 Hardware Acceleration
+- **VideoToolbox**: Apple Silicon M1/M2 hardware acceleration (macOS)
+- **Software Fallback**: Reliable software decoding on all platforms
+- **H.264/HEVC Support**: Hardware and software decoding for major codecs
+- **Performance Optimization**: 60-80% CPU usage reduction with hardware acceleration
 
-### 🎬 고급 예제
-- **비디오 플레이어**: 실시간 하드웨어 가속 재생
-- **GUI 비디오 플레이어**: SDL2 기반 윈도우 플레이어 (루프 재생, 속도 조절)
-- **하드웨어 가속 벤치마크**: 루프 재생 및 성능 측정
-- **실시간 스트리밍**: RTMP 프로토콜 지원
-- **비디오 필터**: 실시간 영상 효과 처리
-- **멀티스레드 처리**: 저지연 비디오 파이프라인
+### 🎬 Advanced Examples
+- **Video Player**: Real-time hardware-accelerated playback
+- **GUI Video Player**: SDL2-based windowed player with loop playback and speed control
+- **Hardware Acceleration Benchmark**: Loop playback and performance measurement
+- **Real-time Streaming**: RTMP protocol support
+- **Video Filters**: Real-time video effects processing
+- **Multithreaded Processing**: Low-latency video pipeline
 
-### 🎮 GUI 플레이어 기능
-- **하드웨어 가속**: VideoToolbox 기반 H.264/HEVC 디코딩
-- **SDL2 렌더링**: 고성능 YUV 텍스처 렌더링
-- **멀티스레딩**: 디코더/렌더러 분리로 끊김 없는 재생
-- **키보드 조작**: 재생/일시정지, 속도 조절 (0.25x~4x)
-- **자동 루프**: EOF에서 자동 seek 및 디코더 플러시
-- **성능 모니터링**: 실시간 프레임 카운터 및 상태 표시
+### 🎮 GUI Player Features
+- **Hardware Acceleration**: VideoToolbox-based H.264/HEVC decoding (macOS)
+- **SDL2 Rendering**: High-performance YUV texture rendering
+- **Multithreading**: Separate decoder/renderer threads for smooth playback
+- **Keyboard Controls**: Play/pause, speed control (0.25x~4x)
+- **Auto Loop**: Automatic seek and decoder flush on EOF
+- **Performance Monitoring**: Real-time frame counter and status display
 
-### 🔧 개발 환경
-- **VS Code 통합**: IntelliSense, 디버깅, 빌드 작업
-- **CMake 빌드**: M1 Mac 최적화된 설정
-- **다양한 코덱**: H.264, HEVC, VP9, AV1, ProRes
+### 🔧 Development Environment
+- **VS Code Integration**: IntelliSense, debugging, build tasks
+- **CMake Build**: Cross-platform optimized configuration
+- **Multiple Codecs**: H.264, HEVC, VP9, AV1, ProRes
 
-## 🏗️ 프로젝트 구조
+## 🏗️ Project Structure
 
 ```
 ffmpeg-study/
@@ -57,77 +58,119 @@ ffmpeg-study/
 └── build/                       # 빌드 출력
 ```
 
-## � 빠른 시작
+## 💻 Platform Support
 
-### 필수 요구사항
-- macOS (Apple Silicon M1/M2 권장)
-- Homebrew
-- CMake 3.20+
-- C++17 지원 컴파일러
+This project supports multiple platforms with platform-specific optimizations:
 
-### 설치
+### Windows
+- **FFmpeg**: Shared libraries from BtbN builds
+- **SDL2**: Official development libraries
+- **Hardware Acceleration**: Software decoding (reliable fallback)
+- **Compiler**: Visual Studio 2022 with UTF-8 support
 
+### macOS (Apple Silicon)
+- **FFmpeg**: Homebrew installation with VideoToolbox
+- **SDL2**: Homebrew installation
+- **Hardware Acceleration**: VideoToolbox for H.264/HEVC
+- **Compiler**: Clang with macOS SDK
+
+### Linux
+- **FFmpeg**: Package manager or manual compilation
+- **SDL2**: Development packages
+- **Hardware Acceleration**: VAAPI/VDPAU support
+- **Compiler**: GCC/Clang
+
+## 🚀 Quick Start
+
+### Windows Setup
+
+1. **Download FFmpeg**:
+   ```powershell
+   # Download from https://github.com/BtbN/FFmpeg-Builds/releases
+   # Extract to project root as 'ffmpeg-master-latest-win64-gpl-shared'
+   ```
+
+2. **Download SDL2** (for GUI player):
+   ```powershell
+   # Download from https://github.com/libsdl-org/SDL/releases
+   # Extract to project root as 'SDL2-2.28.5'
+   ```
+
+3. **Build**:
+   ```powershell
+   cmake -B build -S .
+   cmake --build build
+   ```
+
+4. **Run Examples**:
+   ```powershell
+   .\build\Debug\ffmpeg-info.exe .\media\samples\h264_sample.mp4
+   .\build\Debug\gui-video-player.exe .\media\samples\h264_sample.mp4
+   ```
+
+### macOS Setup
+
+1. **Install Dependencies**:
+   ```bash
+   brew install ffmpeg cmake sdl2
+   ```
+
+2. **Build**:
+   ```bash
+   cmake -B build -S .
+   make -C build -j4
+   ```
+
+3. **Run Examples**:
+   ```bash
+   ./build/ffmpeg-info media/samples/h264_sample.mp4
+   ./build/gui-video-player media/samples/h264_sample.mp4
+   ```
+
+### General Requirements
+- **CMake**: 3.20 or higher
+- **C++ Compiler**: C++17 support required
+- **FFmpeg**: 7.1.1 (or compatible version)
+- **SDL2**: 2.28.5 (for GUI applications)
+
+### Windows Specific
+- **Windows 10/11**: x64 architecture
+- **Visual Studio 2022**: Community edition or higher
+- **PowerShell**: For build commands
+
+### macOS Specific  
+- **macOS**: 11.0 Big Sur or higher
+- **Apple Silicon**: M1/M2 recommended for hardware acceleration
+- **Xcode**: Command line tools
+
+## 📖 Detailed Guide
+
+For comprehensive information about all features and usage, please refer to [**ADVANCED_GUIDE.md**](ADVANCED_GUIDE.md) and [**WINDOWS_SETUP.md**](WINDOWS_SETUP.md).
+
+## 🎯 Example Showcase
+
+### 1. Hardware Accelerated Decoding
 ```bash
-# FFmpeg 설치
-brew install ffmpeg cmake
-
-# 프로젝트 클론
-git clone https://github.com/HyunWookKim/ffmpeg-study.git
-cd ffmpeg-study
-
-# 빌드
-mkdir build && cd build
-cmake ..
-make -j4
-```
-
-### 기본 사용법
-
-```bash
-# 미디어 정보 분석
-./build/ffmpeg-info media/samples/h264_sample.mp4
-
-# 하드웨어 가속 디코딩 테스트
+# Single playback
 ./build/hardware-decoder media/samples/hevc_sample.mp4
 
-# 비디오 플레이어 실행
-./build/video-player media/samples/h264_sample.mp4
-
-# GUI 비디오 플레이어 실행 (SDL2 윈도우)
-./build/gui-video-player media/samples/h264_sample.mp4
-
-# 실시간 필터 적용
-./build/video-filter input.mp4 output.mp4 blur
-```
-
-## 📖 상세 가이드
-
-전체 기능과 사용법에 대한 상세한 정보는 [**ADVANCED_GUIDE.md**](ADVANCED_GUIDE.md)를 참조하세요.
-
-## 🎯 예제 둘러보기
-
-### 1. 하드웨어 가속 디코딩
-```bash
-# 단일 재생
-./build/hardware-decoder media/samples/hevc_sample.mp4
-
-# 루프 재생 (10초간 성능 측정)
+# Loop playback (10 seconds performance measurement)
 ./build/hardware-decoder media/samples/h264_sample.mp4 loop
 ```
 ```
 🍎 M1 Mac Hardware Accelerated Video Decoder
 ✅ VideoToolbox hardware acceleration initialized!
 🚀 Found hevc decoder with VideoToolbox support
-🔄 Loop 1: 파일 끝 도달, 처음부터 다시 재생 (총 59 프레임 처리)
-📊 Frame 100 | HW: 100 | SW: 0 | 평균 FPS: 420.5
-🔄 HW→SW 전송 성공: nv12 (640x480)
+🔄 Loop 1: End of file reached, restarting from beginning (59 frames processed)
+📊 Frame 100 | HW: 100 | SW: 0 | Average FPS: 420.5
+🔄 HW→SW transfer successful: nv12 (640x480)
 
-=== 최종 벤치마크 결과 ===
-평균 디코딩 속도: 425.20 FPS
-하드웨어 가속 비율: 100.0%
+=== Final Benchmark Results ===
+Average decoding speed: 425.20 FPS
+Hardware acceleration ratio: 100.0%
 ```
 
-### 2. 실시간 비디오 플레이어
+### 2. Real-time Video Player
 ```bash
 ./build/video-player media/samples/h264_sample.mp4
 ```
@@ -138,123 +181,123 @@ Hardware acceleration: YES (VideoToolbox)
 🎬 Frame 30 | Time: 1.20s | 🖥️ HW | Queue: 2
 ```
 
-### 3. GUI 비디오 플레이어 ⭐ 신규!
+### 3. GUI Video Player ⭐ New!
 ```bash
 ./build/gui-video-player media/samples/h264_sample.mp4
 ```
-**주요 기능:**
-- 🖥️ **하드웨어 가속**: VideoToolbox 기반 H.264/HEVC 디코딩
-- 🎬 **SDL2 GUI**: 윈도우 기반 실시간 재생
-- 🔄 **자동 루프**: EOF에서 자동 seek 및 재시작  
-- ⚡ **키보드 제어**: 
-  - `SPACE`: 재생/일시정지
-  - `↑/↓`: 속도 조절 (0.25x~4x)
-  - `ESC/Q`: 종료
-- 🧵 **멀티스레딩**: 디코더/렌더러 분리
-- 📊 **실시간 모니터링**: 프레임 카운터, 속도 표시
+**Key Features:**
+- 🖥️ **Hardware Acceleration**: VideoToolbox-based H.264/HEVC decoding
+- 🎬 **SDL2 GUI**: Window-based real-time playback
+- 🔄 **Auto Loop**: Automatic seek and restart on EOF  
+- ⚡ **Keyboard Controls**: 
+  - `SPACE`: Play/pause
+  - `↑/↓`: Speed control (0.25x~4x)
+  - `ESC/Q`: Exit
+- 🧵 **Multithreading**: Separate decoder/renderer threads
+- 📊 **Real-time Monitoring**: Frame counter, speed display
 
-### 4. 비디오 필터 처리
+### 4. Video Filter Processing
 ```bash
 ./build/video-filter input.mp4 blurred.mp4 blur
 ```
-- 가우시안 블러, 스케일링, 밝기 조정
-- 회전, 엣지 검출, 빈티지 효과
-- 실시간 필터 체인 지원
+- Gaussian blur, scaling, brightness adjustment
+- Rotation, edge detection, vintage effects
+- Real-time filter chain support
 
-### 5. RTMP 라이브 스트리밍
+### 5. RTMP Live Streaming
 ```bash
 ./build/rtmp-streamer webcam rtmp://localhost/live/test
 ```
-- 웹캠 실시간 캡처
-- 저지연 H.264 인코딩
-- YouTube Live, Twitch 호환
+- Real-time webcam capture
+- Low-latency H.264 encoding
+- YouTube Live, Twitch compatible
 
-## 📊 성능 벤치마크
+## 📊 Performance Benchmarks
 
-| 기능 | 소프트웨어 | 하드웨어 가속 | 개선도 |
-|------|------------|---------------|--------|
-| H.264 디코딩 | ~1,000 FPS | ~330 FPS* | CPU 60% 절약 |
-| HEVC 디코딩 | ~500 FPS | ~330 FPS* | CPU 70% 절약 |
-| 실시간 필터링 | 15 FPS | 30 FPS | 2x 성능 |
-| 배터리 수명 | 기준 | +40% | 전력 효율 |
+| Feature | Software | Hardware Acceleration | Improvement |
+|---------|----------|----------------------|-------------|
+| H.264 Decoding | ~1,000 FPS | ~330 FPS* | 60% CPU savings |
+| HEVC Decoding | ~500 FPS | ~330 FPS* | 70% CPU savings |
+| Real-time Filtering | 15 FPS | 30 FPS | 2x performance |
+| Battery Life | Baseline | +40% | Power efficiency |
 
-*하드웨어 가속 시 실제 처리량은 메모리 전송 포함
+*Hardware acceleration actual throughput includes memory transfer
 
-## �️ VS Code 개발 환경
+## 🛠️ VS Code Development Environment
 
-프로젝트는 VS Code와 완전히 통합되어 있습니다:
+The project is fully integrated with VS Code:
 
-- **IntelliSense**: FFmpeg API 자동 완성
-- **디버깅**: GDB 통합 디버거
-- **빌드 작업**: 원클릭 빌드 및 테스트
-- **문제 표시**: 실시간 컴파일 오류 검출
+- **IntelliSense**: FFmpeg API auto-completion
+- **Debugging**: Integrated GDB debugger
+- **Build Tasks**: One-click build and test
+- **Problem Detection**: Real-time compilation error detection
 
-### VS Code에서 빌드
-1. `Cmd+Shift+P` (macOS) 또는 `Ctrl+Shift+P` (Windows/Linux)
-2. "Tasks: Run Task" 선택
-3. "build" 선택
+### Build in VS Code
+1. `Cmd+Shift+P` (macOS) or `Ctrl+Shift+P` (Windows/Linux)
+2. Select "Tasks: Run Task"
+3. Select "build"
 
-### 터미널에서 빌드
+### Build in Terminal
 ```bash
-# 프로젝트 설정
+# Project configuration
 cmake -B build -S .
 
-# 빌드
+# Build
 cmake --build build
 ```
 
-## 🔧 확장 및 커스터마이징
+## 🔧 Extensions and Customization
 
-### 새로운 필터 추가
+### Adding New Filters
 ```cpp
-// video_filter.cpp에서
+// In video_filter.cpp
 else if (filter_name == "my_custom_filter") {
     return "your_ffmpeg_filter_chain_here";
 }
 ```
 
-### 하드웨어 가속 확장
+### Hardware Acceleration Extensions
 - CUDA (NVIDIA GPU)
 - OpenCL 
 - Metal Performance Shaders
 
-## 📚 학습 리소스
+## 📚 Learning Resources
 
-- [FFmpeg 공식 문서](https://ffmpeg.org/documentation.html)
+- [FFmpeg Official Documentation](https://ffmpeg.org/documentation.html)
 - [Apple VideoToolbox](https://developer.apple.com/documentation/videotoolbox)
-- [libav* API 레퍼런스](https://ffmpeg.org/doxygen/trunk/index.html)
+- [libav* API Reference](https://ffmpeg.org/doxygen/trunk/index.html)
 
-## 📝 학습 노트
+## 📝 Learning Notes
 
-### FFmpeg 주요 구조체
-- `AVFormatContext`: 컨테이너 포맷 정보
-- `AVCodecContext`: 코덱 설정 및 상태
-- `AVFrame`: 디코딩된 프레임 데이터
-- `AVPacket`: 인코딩된 패킷 데이터
+### FFmpeg Key Structures
+- `AVFormatContext`: Container format information
+- `AVCodecContext`: Codec configuration and state
+- `AVFrame`: Decoded frame data
+- `AVPacket`: Encoded packet data
 
-### 중요한 함수들
-- `avformat_open_input()`: 파일 열기
-- `avformat_find_stream_info()`: 스트림 정보 찾기
-- `avcodec_find_decoder/encoder()`: 코덱 찾기
-- `avcodec_send_packet/receive_frame()`: 디코딩
-- `avcodec_send_frame/receive_packet()`: 인코딩
+### Important Functions
+- `avformat_open_input()`: Open file
+- `avformat_find_stream_info()`: Find stream information
+- `avcodec_find_decoder/encoder()`: Find codec
+- `avcodec_send_packet/receive_frame()`: Decoding
+- `avcodec_send_frame/receive_packet()`: Encoding
 
-### 메모리 관리
-- 모든 FFmpeg 객체는 적절한 해제 함수 호출 필요
+### Memory Management
+- All FFmpeg objects require proper cleanup function calls
 - `av_frame_alloc()` → `av_frame_free()`
 - `av_packet_alloc()` → `av_packet_free()`
 - `avcodec_alloc_context3()` → `avcodec_free_context()`
 
-## 🚀 로드맵
+## 🚀 Roadmap
 
-- [ ] **WebRTC 지원**: 브라우저 기반 실시간 통신
-- [ ] **Core ML 통합**: AI 기반 비디오 분석
-- [ ] **클라우드 연동**: AWS, GCP 스트리밍 서비스
-- [ ] **GUI 인터페이스**: Qt 기반 비주얼 에디터
+- [ ] **WebRTC Support**: Browser-based real-time communication
+- [ ] **Core ML Integration**: AI-based video analysis
+- [ ] **Cloud Integration**: AWS, GCP streaming services
+- [ ] **GUI Interface**: Qt-based visual editor
 
-## 🤝 기여하기
+## 🤝 Contributing
 
-이 프로젝트에 기여를 환영합니다! 
+Contributions to this project are welcome! 
 
 1. Fork the Project
 2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
@@ -262,25 +305,25 @@ else if (filter_name == "my_custom_filter") {
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📝 라이선스
+## 📝 License
 
-이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+This project is distributed under the MIT License. See [LICENSE](LICENSE) file for more information.
 
-## 👨‍💻 만든 이
+## 👨‍💻 Author
 
 **HyunWook Kim** - [@HyunWookKim](https://github.com/HyunWookKim)
 
-프로젝트 링크: [https://github.com/HyunWookKim/ffmpeg-study](https://github.com/HyunWookKim/ffmpeg-study)
+Project Link: [https://github.com/HyunWookKim/ffmpeg-study](https://github.com/HyunWookKim/ffmpeg-study)
 
 ---
 
-⭐ 이 프로젝트가 도움이 되었다면 별표를 눌러주세요!
+⭐ Please give this project a star if you found it helpful!
 
-## 🎬 테스트 미디어 파일
+## 🎬 Test Media Files
 
-`media/` 폴더에 테스트용 비디오 파일을 추가하세요:
-- 작은 크기의 MP4 파일 권장
-- 다양한 코덱으로 테스트 (H.264, H.265, VP9 등)
+Add test video files to the `media/` folder:
+- Small size MP4 files recommended
+- Test with various codecs (H.264, H.265, VP9, etc.)
 
 ## 📖 추가 학습 자료
 

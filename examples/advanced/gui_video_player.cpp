@@ -5,14 +5,22 @@
 #include <queue>
 #include <mutex>
 #include <condition_variable>
+#include <string>
+
+#ifdef _WIN32
+#include <SDL.h>
+#else
 #include <SDL2/SDL.h>
+#endif
 
 extern "C" {
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
 #include <libavutil/avutil.h>
 #include <libavutil/hwcontext.h>
+#ifndef _WIN32
 #include <libavutil/hwcontext_videotoolbox.h>
+#endif
 #include <libswscale/swscale.h>
 }
 
@@ -174,13 +182,13 @@ public:
         // 하드웨어 프레임도 고려하여 동적으로 생성할 예정
         sws_ctx = nullptr;
         
-        std::cout << "🎬 GUI 비디오 플레이어 초기화 완료!" << std::endl;
-        std::cout << "📹 " << video_width << "x" << video_height 
+        std::cout << "[GUI] GUI Video Player initialized successfully!" << std::endl;
+        std::cout << "[INFO] " << video_width << "x" << video_height 
                   << " @ " << frame_rate << " FPS" << std::endl;
-        std::cout << "⏱️  재생 시간: " << duration << "초 (" << total_frames << " 프레임)" << std::endl;
+        std::cout << "[INFO] Duration: " << duration << "s (" << total_frames << " frames)" << std::endl;
         
         if (hw_device_ctx) {
-            std::cout << "🖥️  VideoToolbox 하드웨어 가속 활성화!" << std::endl;
+            std::cout << "[HW] VideoToolbox hardware acceleration enabled!" << std::endl;
         }
         
         return true;
@@ -219,7 +227,7 @@ private:
         if (av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VIDEOTOOLBOX, nullptr, nullptr, 0) == 0) {
             video_codec_ctx->hw_device_ctx = av_buffer_ref(hw_device_ctx);
             video_codec_ctx->get_format = getHardwareFormat;
-            std::cout << "✅ VideoToolbox 하드웨어 가속 초기화 성공!" << std::endl;
+            std::cout << "[HW] VideoToolbox hardware acceleration initialized successfully!" << std::endl;
         }
     }
     
@@ -248,7 +256,7 @@ private:
         auto start_time = std::chrono::steady_clock::now();
         int frame_count = 0;
         
-        std::cout << "🔍 디코더 워커 시작" << std::endl;
+        std::cout << "[DECODER] Decoder worker started" << std::endl;
         
         while (!should_quit) {
             int ret = av_read_frame(format_ctx, packet);
@@ -256,7 +264,7 @@ private:
             // 파일 끝에 도달하면 처음부터 다시 재생 (루프)
             if (ret < 0) {
                 if (ret == AVERROR_EOF) {
-                    std::cout << "🔄 파일 끝 도달, 처음부터 다시 재생 (프레임: " << frame_count << ")" << std::endl;
+                    std::cout << "[LOOP] End of file reached, restarting from beginning (frame: " << frame_count << ")" << std::endl;
                     
                     // avcodec_flush_buffers로 디코더 상태 초기화
                     avcodec_flush_buffers(video_codec_ctx);
@@ -270,11 +278,14 @@ private:
                     current_frame = 0;
                     frame_count = 0;
                     
+                    // Clear progress line for new loop
+                    std::cout << "\r" << std::string(80, ' ') << "\r" << std::flush;
+                    
                     // 잠시 대기 후 다시 시도
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
                     continue;
                 } else {
-                    std::cerr << "❌ 프레임 읽기 오류: " << av_err2str(ret) << std::endl;
+                    std::cerr << "[ERROR] Frame read error: " << ret << std::endl;
                     break;
                 }
             }
@@ -296,16 +307,32 @@ private:
                         AVFrame* source_frame = frame;
                         
                         // 하드웨어 프레임인 경우 소프트웨어로 전송
+                        bool is_hardware = false;
                         if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
                             if (av_hwframe_transfer_data(sw_frame, frame, 0) == 0) {
                                 av_frame_copy_props(sw_frame, frame);
                                 source_frame = sw_frame;
-                                std::cout << "🖥️ " << std::flush;  // 하드웨어 디코딩 표시
-                            } else {
-                                std::cout << "💻 " << std::flush;  // 소프트웨어 fallback
+                                is_hardware = true;
                             }
-                        } else {
-                            std::cout << "💻 " << std::flush;  // 소프트웨어 디코딩
+                        }
+                        
+                        // Progress display every 5 frames or at the end
+                        if (frame_count % 5 == 0 || frame_count == total_frames) {
+                            int progress = (frame_count * 100) / total_frames;
+                            int bar_width = 20;
+                            int filled = (progress * bar_width) / 100;
+                            
+                            std::cout << "\r[DECODE] [";
+                            for (int i = 0; i < bar_width; i++) {
+                                std::cout << (i < filled ? "#" : "-");
+                            }
+                            std::cout << "] " << progress << "% (" << frame_count << "/" << total_frames << ") "
+                                     << (is_hardware ? "HW" : "SW") << std::flush;
+                            
+                            // Add newline when complete
+                            if (frame_count == total_frames) {
+                                std::cout << std::endl;
+                            }
                         }
                         
                         // YUV420P로 변환이 필요한 경우
@@ -368,7 +395,7 @@ private:
             }
         }
         
-        std::cout << "\n🔍 디코더 워커 종료 (총 " << frame_count << " 프레임 처리)" << std::endl;
+        std::cout << "\n[DECODER] Decoder worker finished (total " << frame_count << " frames processed)" << std::endl;
         
         av_frame_free(&frame);
         av_frame_free(&sw_frame);
@@ -381,7 +408,7 @@ private:
         auto last_frame_time = std::chrono::steady_clock::now();
         int rendered_frames = 0;
         
-        std::cout << "🎬 렌더링 워커 시작 - 프레임 간격: " 
+        std::cout << "[RENDER] Rendering worker started - frame interval: " 
                   << frame_duration.count() * 1000 << "ms" << std::endl;
         
         while (!should_quit) {
@@ -431,7 +458,7 @@ private:
             }
         }
         
-        std::cout << "🎬 렌더링 워커 종료 (총 " << rendered_frames << " 프레임 렌더링)" << std::endl;
+        std::cout << "[RENDER] Rendering worker finished (total " << rendered_frames << " frames rendered)" << std::endl;
     }
     
     void renderFrame(AVFrame* frame) {
@@ -493,11 +520,11 @@ private:
         SDL_Event event;
         auto last_title_update = std::chrono::steady_clock::now();
         
-        std::cout << "\n🎮 조작법:" << std::endl;
-        std::cout << "  SPACE: 재생/일시정지" << std::endl;
-        std::cout << "  ↑/↓: 재생 속도 조절" << std::endl;
-        std::cout << "  ESC/Q: 종료" << std::endl;
-        std::cout << "  클릭: 윈도우 닫기로 종료\n" << std::endl;
+        std::cout << "\n[CONTROLS] Controls:" << std::endl;
+        std::cout << "  SPACE: Play/Pause" << std::endl;
+        std::cout << "  UP/DOWN: Adjust playback speed" << std::endl;
+        std::cout << "  ESC/Q: Quit" << std::endl;
+        std::cout << "  Click: Close window to quit\n" << std::endl;
         
         while (!should_quit) {
             while (SDL_PollEvent(&event)) {
@@ -537,17 +564,17 @@ private:
         switch (key) {
             case SDLK_SPACE:
                 paused = !paused;
-                std::cout << (paused ? "⏸️  일시정지" : "▶️  재생") << std::endl;
+                std::cout << (paused ? "[PAUSE] Paused" : "[PLAY] Playing") << std::endl;
                 break;
                 
             case SDLK_UP:
                 playback_speed = std::min(4.0, playback_speed.load() + 0.25);
-                std::cout << "⚡ 재생 속도: " << playback_speed.load() << "x" << std::endl;
+                std::cout << "[SPEED] Faster playback: " << playback_speed.load() << "x" << std::endl;
                 break;
                 
             case SDLK_DOWN:
                 playback_speed = std::max(0.25, playback_speed.load() - 0.25);
-                std::cout << "🐌 재생 속도: " << playback_speed.load() << "x" << std::endl;
+                std::cout << "[SPEED] Slower playback: " << playback_speed.load() << "x" << std::endl;
                 break;
                 
             case SDLK_ESCAPE:
@@ -613,9 +640,9 @@ private:
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
-        std::cout << "🎬 FFmpeg GUI 비디오 플레이어" << std::endl;
-        std::cout << "사용법: " << argv[0] << " <비디오_파일>" << std::endl;
-        std::cout << "\n예제:" << std::endl;
+        std::cout << "[GUI] FFmpeg GUI Video Player" << std::endl;
+        std::cout << "Usage: " << argv[0] << " <video_file>" << std::endl;
+        std::cout << "\nExample:" << std::endl;
         std::cout << "  " << argv[0] << " media/samples/h264_sample.mp4" << std::endl;
         return 1;
     }
@@ -629,6 +656,6 @@ int main(int argc, char* argv[]) {
     
     player.play();
     
-    std::cout << "👋 플레이어 종료" << std::endl;
+    std::cout << "[EXIT] Player closed" << std::endl;
     return 0;
 }

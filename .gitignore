@@ -44,6 +44,12 @@ _deps
 # FFmpeg logs
 *.log
 
+# Windows FFmpeg binaries and SDL2
+ffmpeg-master-latest-win64-gpl-shared/
+ffmpeg-shared.zip
+SDL2-2.28.5/
+SDL2-devel.zip
+
 # Temporary files
 *.tmp
 *.temp

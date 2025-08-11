@@ -13,11 +13,15 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/avutil.h>
 #include <libavutil/hwcontext.h>
-#include <libavutil/hwcontext_videotoolbox.h>
 #include <libavutil/pixdesc.h>
 #include <libavutil/time.h>
 #include <libswscale/swscale.h>
 #include <libavutil/imgutils.h>
+
+// 플랫폼별 하드웨어 가속 헤더 (Windows는 일단 제외)
+#ifdef __APPLE__
+#include <libavutil/hwcontext_videotoolbox.h>
+#endif
 }
 
 // 하드웨어 픽셀 포맷 선택 함수
@@ -76,7 +80,8 @@ private:
     std::atomic<bool> is_seeking{false};
     std::atomic<double> current_time{0.0};
     std::atomic<double> duration{0.0};
-    std::atomic<int> frame_count{0};
+    std::atomic<int> frame_count{0};        // Successfully displayed frames
+    std::atomic<int> decoded_frames{0};     // Total decoded frames
     std::atomic<int> dropped_frames{0};
     
     // Display
@@ -93,7 +98,7 @@ public:
     }
     
     bool initialize_hardware_acceleration() {
-        std::cout << "🔧 Initializing VideoToolbox hardware acceleration..." << std::endl;
+        std::cout << "[INIT] Initializing VideoToolbox hardware acceleration..." << std::endl;
         
         int ret = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VIDEOTOOLBOX, nullptr, nullptr, 0);
         if (ret < 0) {
@@ -101,12 +106,12 @@ public:
             return false;
         }
         
-        std::cout << "✅ VideoToolbox hardware acceleration initialized successfully!" << std::endl;
+        std::cout << "[OK] VideoToolbox hardware acceleration initialized successfully!" << std::endl;
         return true;
     }
     
     bool open_media(const char* filename) {
-        std::cout << "📂 Opening media file: " << filename << std::endl;
+        std::cout << "[OPEN] Opening media file: " << filename << std::endl;
         
         // Open input file
         int ret = avformat_open_input(&format_ctx, filename, nullptr, nullptr);
@@ -137,7 +142,7 @@ public:
         }
         
         if (video_stream_index == -1) {
-            std::cerr << "❌ Could not find video stream" << std::endl;
+            std::cerr << "[ERROR] Could not find video stream" << std::endl;
             return false;
         }
         
@@ -164,7 +169,7 @@ public:
         // Find decoder
         const AVCodec* codec = avcodec_find_decoder(codecpar->codec_id);
         if (!codec) {
-            std::cerr << "❌ Video decoder not found" << std::endl;
+            std::cerr << "[ERROR] Video decoder not found" << std::endl;
             return false;
         }
         
@@ -173,16 +178,16 @@ public:
                                      codecpar->codec_id == AV_CODEC_ID_HEVC);
         
         if (is_hardware_supported) {
-            std::cout << "🚀 Using " << avcodec_get_name(codecpar->codec_id) 
+            std::cout << "[INFO] Using " << avcodec_get_name(codecpar->codec_id) 
                      << " decoder with VideoToolbox hardware acceleration" << std::endl;
         } else {
-            std::cout << "💻 Using software decoder for " << avcodec_get_name(codecpar->codec_id) << std::endl;
+            std::cout << "[INFO] Using software decoder for " << avcodec_get_name(codecpar->codec_id) << std::endl;
         }
         
         // Allocate codec context
         video_codec_ctx = avcodec_alloc_context3(codec);
         if (!video_codec_ctx) {
-            std::cerr << "❌ Could not allocate video codec context" << std::endl;
+            std::cerr << "[ERROR] Could not allocate video codec context" << std::endl;
             return false;
         }
         
@@ -214,14 +219,14 @@ public:
         
         const AVCodec* codec = avcodec_find_decoder(codecpar->codec_id);
         if (!codec) {
-            std::cout << "⚠️  Audio decoder not found, skipping audio" << std::endl;
+            std::cout << "[WARN] Audio decoder not found, skipping audio" << std::endl;
             audio_stream_index = -1;
             return false;
         }
         
         audio_codec_ctx = avcodec_alloc_context3(codec);
         if (!audio_codec_ctx) {
-            std::cout << "⚠️  Could not allocate audio codec context" << std::endl;
+            std::cout << "[WARN] Could not allocate audio codec context" << std::endl;
             audio_stream_index = -1;
             return false;
         }
@@ -240,13 +245,13 @@ public:
             return false;
         }
         
-        std::cout << "🎵 Audio stream found: " << avcodec_get_name(codecpar->codec_id) 
+        std::cout << "[AUDIO] Audio stream found: " << avcodec_get_name(codecpar->codec_id) 
                  << " @ " << codecpar->sample_rate << "Hz" << std::endl;
         return true;
     }
     
     void print_media_info() {
-        std::cout << "\n📹 Media Information" << std::endl;
+        std::cout << "\n[INFO] Media Information" << std::endl;
         std::cout << "===================" << std::endl;
         std::cout << "Duration: " << std::fixed << std::setprecision(2) << duration.load() << " seconds" << std::endl;
         std::cout << "Video: " << video_codec_ctx->width << "x" << video_codec_ctx->height 
@@ -261,7 +266,7 @@ public:
     }
     
     void start_playback() {
-        std::cout << "▶️  Starting playback..." << std::endl;
+        std::cout << "[START] Starting playback..." << std::endl;
         
         playback_start_time = av_gettime();
         
@@ -281,10 +286,13 @@ public:
         if (display_thread.joinable()) display_thread.join();
         if (audio_thread.joinable()) audio_thread.join();
         
-        std::cout << "\n✅ Playback finished!" << std::endl;
-        std::cout << "📊 Statistics:" << std::endl;
-        std::cout << "   Total frames: " << frame_count.load() << std::endl;
+        std::cout << "\n[OK] Playback finished!" << std::endl;
+        std::cout << "[STATS] Statistics:" << std::endl;
+        std::cout << "   Decoded frames: " << decoded_frames.load() << std::endl;
+        std::cout << "   Displayed frames: " << frame_count.load() << std::endl;
         std::cout << "   Dropped frames: " << dropped_frames.load() << std::endl;
+        std::cout << "   Final queue size: " << video_queue.size() << std::endl;
+        std::cout << "   Max queue size: " << MAX_QUEUE_SIZE << std::endl;
     }
     
     void decode_worker() {
@@ -298,6 +306,13 @@ public:
                 decode_audio_packet(packet, frame);
             }
             av_packet_unref(packet);
+        }
+        
+        // Check if we reached end of file
+        if (!should_stop) {
+            should_stop = true; // Signal all threads to stop
+            std::cout << "\n[EOF] Reached end of file, playback completed!" << std::endl;
+            show_final_progress(); // Show 100% completion
         }
         
         av_packet_free(&packet);
@@ -315,6 +330,8 @@ public:
             } else if (ret < 0) {
                 break;
             }
+            
+            decoded_frames++; // Count decoded frames
             
             // Check queue size
             {
@@ -395,10 +412,12 @@ public:
     
     void display_frame_info(const FrameInfo& frame_info) {
         if (frame_count % 30 == 0) {  // Print every 30 frames
-            std::cout << "🎬 Frame " << frame_count.load() 
+            std::cout << "[PLAY] Frame " << frame_count.load() 
                      << " | Time: " << std::fixed << std::setprecision(2) << frame_info.timestamp << "s"
-                     << " | " << (frame_info.is_hardware ? "🖥️ HW" : "💻 SW")
-                     << " | Queue: " << video_queue.size() << std::endl;
+                     << " | " << (frame_info.is_hardware ? "HW" : "SW")
+                     << " | Queue: " << video_queue.size() << "/" << MAX_QUEUE_SIZE
+                     << " | Decoded: " << decoded_frames.load()
+                     << " | Dropped: " << dropped_frames.load() << std::endl;
         }
         
         // Here you would typically render the frame to a window
@@ -452,7 +471,7 @@ public:
     void audio_worker() {
         // Audio playback would be implemented here
         // For this example, we just track that audio is available
-        std::cout << "🎵 Audio thread started (output not implemented in this example)" << std::endl;
+        std::cout << "[AUDIO] Audio thread started (output not implemented in this example)" << std::endl;
         
         while (!should_stop) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -460,11 +479,15 @@ public:
     }
     
     void control_loop() {
-        std::cout << "\n⌨️  Playback Controls:" << std::endl;
+        std::cout << "\n[CTRL] Playback Controls:" << std::endl;
         std::cout << "   SPACE: Pause/Resume" << std::endl;
         std::cout << "   Q: Quit" << std::endl;
         std::cout << "   I: Show info" << std::endl;
         std::cout << "   (This is a console demo - controls are not interactive)" << std::endl;
+        std::cout << "\n[INFO] Progress Display Format:" << std::endl;
+        std::cout << "   Q: Queue usage (current/max)" << std::endl;
+        std::cout << "   D: Total decoded frames" << std::endl;
+        std::cout << "   Drop: Frames dropped due to queue overflow" << std::endl;
         
         auto last_info_time = std::chrono::steady_clock::now();
         
@@ -478,9 +501,11 @@ public:
             }
             
             // Check if playback finished
-            if (current_time.load() >= duration.load() && duration.load() > 0) {
-                std::cout << "\n🏁 Reached end of media" << std::endl;
-                should_stop = true;
+            if ((current_time.load() >= duration.load() && duration.load() > 0) || should_stop) {
+                if (!should_stop) {
+                    std::cout << "\n[EOF] Reached end of media" << std::endl;
+                    should_stop = true;
+                }
                 break;
             }
             
@@ -494,22 +519,39 @@ public:
         
         if (total > 0) {
             double progress = (current / total) * 100.0;
-            int bar_width = 40;
+            int bar_width = 30; // Reduced to make room for queue info
             int filled = (int)(progress * bar_width / 100.0);
             
-            std::cout << "\r📺 [";
+            std::cout << "\r[PROG] [";
             for (int i = 0; i < bar_width; i++) {
-                if (i < filled) std::cout << "█";
-                else std::cout << "░";
+                if (i < filled) std::cout << "#";
+                else std::cout << "-";
             }
             std::cout << "] " << std::fixed << std::setprecision(1) << progress << "% "
-                     << "(" << (int)current << "s/" << (int)total << "s)" << std::flush;
+                     << "(" << (int)current << "s/" << (int)total << "s)"
+                     << " | Q:" << video_queue.size() << "/" << MAX_QUEUE_SIZE
+                     << " | D:" << decoded_frames.load()
+                     << " | Drop:" << dropped_frames.load() << std::flush;
         }
+    }
+    
+    void show_final_progress() {
+        double total = duration.load();
+        int bar_width = 30; // Consistent with show_playback_progress
+        
+        std::cout << "\r[PROG] [";
+        for (int i = 0; i < bar_width; i++) {
+            std::cout << "#";
+        }
+        std::cout << "] 100.0% (" << (int)total << "s/" << (int)total << "s)"
+                 << " | Q:" << video_queue.size() << "/" << MAX_QUEUE_SIZE
+                 << " | D:" << decoded_frames.load()
+                 << " | Drop:" << dropped_frames.load() << std::endl;
     }
     
     void pause_resume() {
         is_paused = !is_paused;
-        std::cout << (is_paused ? "\n⏸️  Paused" : "\n▶️  Resumed") << std::endl;
+        std::cout << (is_paused ? "\n[PAUSE] Paused" : "\n[RESUME] Resumed") << std::endl;
     }
     
     void stop_playback() {
@@ -539,13 +581,13 @@ private:
     void print_error(const char* message, int error_code) {
         char error_buf[AV_ERROR_MAX_STRING_SIZE];
         av_strerror(error_code, error_buf, AV_ERROR_MAX_STRING_SIZE);
-        std::cerr << "❌ " << message << ": " << error_buf << std::endl;
+        std::cerr << "[ERROR] " << message << ": " << error_buf << std::endl;
     }
 };
 
 void print_usage(const char* program_name) {
-    std::cout << "🎬 Hardware Accelerated Video Player" << std::endl;
-    std::cout << "====================================" << std::endl;
+    std::cout << "[PLAYER] Hardware Accelerated Video Player" << std::endl;
+    std::cout << "==========================================" << std::endl;
     std::cout << "Usage: " << program_name << " <video_file>" << std::endl << std::endl;
     
     std::cout << "Features:" << std::endl;
@@ -569,25 +611,25 @@ int main(int argc, char* argv[]) {
     
     const char* video_file = argv[1];
     
-    std::cout << "🎬 Hardware Accelerated Video Player" << std::endl;
-    std::cout << "====================================" << std::endl;
+    std::cout << "[PLAYER] Hardware Accelerated Video Player" << std::endl;
+    std::cout << "==========================================" << std::endl;
     
     HardwareVideoPlayer player;
     
     // Initialize hardware acceleration
     if (!player.initialize_hardware_acceleration()) {
-        std::cerr << "⚠️  Continuing with software decoding only" << std::endl;
+        std::cerr << "[WARN] Continuing with software decoding only" << std::endl;
     }
     
     // Open media file
     if (!player.open_media(video_file)) {
-        std::cerr << "❌ Failed to open media file: " << video_file << std::endl;
+        std::cerr << "[ERROR] Failed to open media file: " << video_file << std::endl;
         return 1;
     }
     
     // Signal handling for graceful shutdown
     signal(SIGINT, [](int) {
-        std::cout << "\n🛑 Stopping playback..." << std::endl;
+        std::cout << "\n[STOP] Stopping playback..." << std::endl;
         exit(0);
     });
     

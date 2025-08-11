@@ -7,8 +7,12 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/avutil.h>
 #include <libavutil/hwcontext.h>
-#include <libavutil/hwcontext_videotoolbox.h>
 #include <libavutil/pixdesc.h>
+
+// 플랫폼별 하드웨어 가속 헤더 (Windows는 일단 제외)
+#ifdef __APPLE__
+#include <libavutil/hwcontext_videotoolbox.h>
+#endif
 }
 
 // 하드웨어 픽셀 포맷 선택 함수
@@ -16,9 +20,11 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelF
     const enum AVPixelFormat *p;
     
     for (p = pix_fmts; *p != AV_PIX_FMT_NONE; p++) {
+#ifdef __APPLE__
         if (*p == AV_PIX_FMT_VIDEOTOOLBOX) {
             return *p;
         }
+#endif
     }
     
     std::cerr << "Failed to get HW surface format." << std::endl;
@@ -38,15 +44,20 @@ public:
     }
     
     bool initialize_hardware_acceleration() {
+#ifdef __APPLE__
         // M1 Mac의 VideoToolbox 하드웨어 가속 초기화
         int ret = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VIDEOTOOLBOX, nullptr, nullptr, 0);
         if (ret < 0) {
             print_error("Failed to create VideoToolbox device context", ret);
             return false;
         }
-        
-        std::cout << "✅ VideoToolbox hardware acceleration initialized successfully!" << std::endl;
+        std::cout << "[OK] VideoToolbox hardware acceleration initialized successfully!" << std::endl;
         return true;
+#else
+        // Windows 및 기타 플랫폼에서는 소프트웨어 디코딩 사용
+        std::cout << "[WARN] Hardware acceleration not available on this platform, using software decoding" << std::endl;
+        return false;
+#endif
     }
     
     bool open_file(const char* filename) {
@@ -85,6 +96,7 @@ public:
         bool is_hardware_decoder = false;
         
         // 먼저 일반 디코더를 찾고, 하드웨어 가속은 별도로 설정
+        // _by_name
         codec = avcodec_find_decoder(codecpar->codec_id);
         if (!codec) {
             std::cerr << "Decoder not found for codec: " << avcodec_get_name(codecpar->codec_id) << std::endl;
@@ -95,7 +107,7 @@ public:
         if (codecpar->codec_id == AV_CODEC_ID_H264 || codecpar->codec_id == AV_CODEC_ID_HEVC) {
             // 하드웨어 가속이 가능한 코덱
             is_hardware_decoder = true;
-            std::cout << "🚀 Found " << avcodec_get_name(codecpar->codec_id) << " decoder with VideoToolbox support" << std::endl;
+            std::cout << "[INFO] Found " << avcodec_get_name(codecpar->codec_id) << " decoder with VideoToolbox support" << std::endl;
         } else {
             std::cout << "ℹ️  Using software decoder for codec: " << avcodec_get_name(codecpar->codec_id) << std::endl;
             is_hardware_decoder = false;
@@ -136,7 +148,7 @@ public:
         
         // 실제 하드웨어 가속 여부 확인
         if (is_hardware_decoder && codec_ctx->hw_device_ctx) {
-            std::cout << "✅ Hardware acceleration confirmed and active" << std::endl;
+            std::cout << "[OK] Hardware acceleration confirmed and active" << std::endl;
         }
         
         return true;
@@ -231,7 +243,7 @@ public:
                     
                     if (is_hw_frame) {
                         hw_frame_count++;
-                        std::cout << "🖥️ " << std::flush;  // 하드웨어 디코딩 표시
+                        std::cout << "[HW] " << std::flush;  // 하드웨어 디코딩 표시
                         
                         // 하드웨어 프레임을 소프트웨어 메모리로 전송 데모
                         if (frame_count % 60 == 0) { // 60프레임마다 데모
@@ -243,7 +255,7 @@ public:
                         }
                     } else {
                         sw_frame_count++;
-                        std::cout << "💻 " << std::flush;  // 소프트웨어 디코딩 표시
+                        std::cout << "[SW] " << std::flush;  // 소프트웨어 디코딩 표시
                     }
                     
                     // 상세한 프레임 정보 (100프레임마다)
@@ -267,19 +279,19 @@ public:
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
         
-        std::cout << "\n\n=== 최종 벤치마크 결과 ===" << std::endl;
-        std::cout << "총 처리 프레임: " << frame_count << std::endl;
-        std::cout << "하드웨어 디코딩: " << hw_frame_count << " 프레임" << std::endl;
-        std::cout << "소프트웨어 디코딩: " << sw_frame_count << " 프레임" << std::endl;
+        std::cout << "\n\n=== Final Benchmark Results ===" << std::endl;
+        std::cout << "Total frames processed: " << frame_count << std::endl;
+        std::cout << "Hardware decoding: " << hw_frame_count << " frames" << std::endl;
+        std::cout << "Software decoding: " << sw_frame_count << " frames" << std::endl;
         if (enable_loop) {
-            std::cout << "완료된 루프: " << loop_count << " 회" << std::endl;
+            std::cout << "Completed loops: " << loop_count << " times" << std::endl;
         }
-        std::cout << "소요 시간: " << duration.count() << " ms" << std::endl;
+        std::cout << "Total time: " << duration.count() << " ms" << std::endl;
         if (frame_count > 0 && duration.count() > 0) {
             double fps = (frame_count * 1000.0) / duration.count();
             double hw_percentage = (double)hw_frame_count / frame_count * 100.0;
-            std::cout << "평균 디코딩 속도: " << std::fixed << std::setprecision(2) << fps << " FPS" << std::endl;
-            std::cout << "하드웨어 가속 비율: " << std::fixed << std::setprecision(1) << hw_percentage << "%" << std::endl;
+            std::cout << "Average decoding speed: " << std::fixed << std::setprecision(2) << fps << " FPS" << std::endl;
+            std::cout << "Hardware acceleration ratio: " << std::fixed << std::setprecision(1) << hw_percentage << "%" << std::endl;
         }
         std::cout << "=========================================" << std::endl;
         
@@ -310,21 +322,21 @@ private:
 
 int main(int argc, char* argv[]) {
     if (argc < 2 || argc > 3) {
-        std::cout << "🍎 M1 Mac Hardware Accelerated Video Decoder" << std::endl;
+        std::cout << "[Apple] M1 Mac Hardware Accelerated Video Decoder" << std::endl;
         std::cout << "============================================" << std::endl;
         std::cout << "사용법: " << argv[0] << " <input_file> [loop]" << std::endl;
         std::cout << "\n예제:" << std::endl;
         std::cout << "  " << argv[0] << " media/samples/hevc_sample.mp4        # 단일 재생" << std::endl;
         std::cout << "  " << argv[0] << " media/samples/h264_sample.mp4 loop   # 루프 재생 (10초)" << std::endl;
         std::cout << "\n지원 코덱:" << std::endl;
-        std::cout << "  🖥️  H.264, HEVC (VideoToolbox 하드웨어 가속)" << std::endl;
+        std::cout << "  [HW]  H.264, HEVC (VideoToolbox hardware acceleration)" << std::endl;
         std::cout << "  💻 기타 모든 코덱 (소프트웨어 디코딩)" << std::endl;
         return 1;
     }
     
     bool enable_loop = (argc == 3 && std::string(argv[2]) == "loop");
     
-    std::cout << "🍎 M1 Mac Hardware Accelerated Video Decoder" << std::endl;
+    std::cout << "[Apple] M1 Mac Hardware Accelerated Video Decoder" << std::endl;
     std::cout << "============================================" << std::endl;
     std::cout << "파일: " << argv[1] << std::endl;
     std::cout << "모드: " << (enable_loop ? "루프 재생 (10초)" : "단일 재생") << std::endl;
@@ -334,7 +346,7 @@ int main(int argc, char* argv[]) {
     
     // Initialize hardware acceleration
     if (!decoder.initialize_hardware_acceleration()) {
-        std::cerr << "⚠️  하드웨어 가속 초기화 실패, 소프트웨어 디코딩으로 계속..." << std::endl;
+        std::cerr << "[WARN] Hardware acceleration initialization failed, continuing with software decoding..." << std::endl;
     }
     
     // Open file and decode
